@@ -4,8 +4,9 @@ import (
 	"github.com/judgenot0/judge-backend/structs"
 )
 
-func GetContest() ([]structs.Contest, error) {
+func GetContests() ([]structs.Contest, error) {
 	contests := []structs.Contest{}
+	//TODO: Add Dynamic DB fetch of contests
 	contests = append(contests, structs.Contest{
 		ContestId:   10,
 		ContestName: "UTA-2025",

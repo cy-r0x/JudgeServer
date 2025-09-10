@@ -3,13 +3,17 @@ package cmd
 import (
 	"net/http"
 
+	"github.com/judgenot0/judge-backend/handlers"
 	"github.com/judgenot0/judge-backend/middlewares"
 )
 
-func routes(mux *http.ServeMux) {
-	mux.Handle("GET /", middlewares.Logger(http.HandlerFunc(handleRoot)))
+func initRoutes(mux *http.ServeMux) {
+	mngr := middlewares.NewManager()
+	mngr.Use(middlewares.Logger)
 
-	mux.Handle("GET /contest/{contestId}", middlewares.Logger(http.HandlerFunc(handleProblemList)))
+	mux.Handle("GET /", mngr.With(handlers.HandleContests))
+
+	mux.Handle("GET /contest/{contestId}", mngr.With(handlers.HandleProblemList))
 
 	mux.Handle("GET /contest/{contestId}/{problemId}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//TODO: Fetch problem data from DB;

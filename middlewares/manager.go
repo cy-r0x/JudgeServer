@@ -1,0 +1,38 @@
+package middlewares
+
+import (
+	"net/http"
+)
+
+type Middleware func(next http.Handler) http.Handler
+type Handler func(w http.ResponseWriter, r *http.Request)
+
+type Manager struct {
+	globalMiddlewares []Middleware
+}
+
+func NewManager() *Manager {
+	return &Manager{
+		globalMiddlewares: make([]Middleware, 0),
+	}
+}
+
+// To Add Default Middlewares that are needed for all request-respone (e.g. CORS, Preflight Request, Handle Auth, Logger etc)
+func (mngr *Manager) Use(middlewares ...Middleware) {
+	mngr.globalMiddlewares = append(mngr.globalMiddlewares, middlewares...)
+}
+
+// To Chain all the middleware with middleware parametes for clean code
+func (mngr *Manager) With(next Handler, middlewares ...Middleware) http.Handler {
+	n := http.Handler(http.HandlerFunc(next))
+
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		n = middlewares[i](n)
+	}
+
+	for i := len(mngr.globalMiddlewares) - 1; i >= 0; i-- {
+		n = mngr.globalMiddlewares[i](n)
+	}
+
+	return n
+}

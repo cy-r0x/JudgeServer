@@ -7,13 +7,10 @@ import (
 	"github.com/judgenot0/judge-backend/middlewares"
 )
 
-func initRoutes(mux *http.ServeMux) {
-	mngr := middlewares.NewManager()
-	mngr.Use(middlewares.Logger)
+func initRoutes(mux *http.ServeMux, manager *middlewares.Manager) {
+	mux.Handle("GET /", manager.With(handlers.HandleContests))
 
-	mux.Handle("GET /", mngr.With(handlers.HandleContests))
-
-	mux.Handle("GET /contest/{contestId}", mngr.With(handlers.HandleProblemList))
+	mux.Handle("GET /contest/{contestId}", manager.With(handlers.HandleProblemList))
 
 	mux.Handle("GET /contest/{contestId}/{problemId}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//TODO: Fetch problem data from DB;

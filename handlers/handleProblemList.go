@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"github.com/judgenot0/judge-backend/utils"
 )
 
 func HandleProblemList(w http.ResponseWriter, r *http.Request) {
@@ -15,7 +17,7 @@ func HandleProblemList(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
-	data, err := GetProblems(contestId)
+	data, err := utils.GetProblems(contestId)
 	if err != nil {
 
 	}

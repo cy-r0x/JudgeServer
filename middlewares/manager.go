@@ -6,7 +6,6 @@ import (
 
 type Middleware func(next http.Handler) http.Handler
 type Handler func(w http.ResponseWriter, r *http.Request)
-
 type Manager struct {
 	globalMiddlewares []Middleware
 }
@@ -35,4 +34,14 @@ func (mngr *Manager) With(next Handler, middlewares ...Middleware) http.Handler 
 	}
 
 	return n
+}
+
+func (mngr *Manager) WrapMux(handler http.Handler) http.Handler {
+	h := handler
+
+	for i := len(mngr.globalMiddlewares) - 1; i >= 0; i-- {
+		h = mngr.globalMiddlewares[i](h)
+	}
+
+	return h
 }

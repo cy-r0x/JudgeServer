@@ -1,4 +1,4 @@
-package handlers
+package utils
 
 import "github.com/judgenot0/judge-backend/structs"
 

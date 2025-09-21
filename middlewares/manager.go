@@ -29,10 +29,6 @@ func (mngr *Manager) With(next Handler, middlewares ...Middleware) http.Handler 
 		n = middlewares[i](n)
 	}
 
-	for i := len(mngr.globalMiddlewares) - 1; i >= 0; i-- {
-		n = mngr.globalMiddlewares[i](n)
-	}
-
 	return n
 }
 

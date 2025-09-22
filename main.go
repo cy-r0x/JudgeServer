@@ -1,7 +1,19 @@
 package main
 
-import "github.com/judgenot0/judge-backend/cmd"
+import (
+	"log"
+	"os"
+
+	env "github.com/joho/godotenv"
+	"github.com/judgenot0/judge-backend/cmd"
+)
 
 func main() {
-	cmd.Serve()
+	err := env.Load()
+	if err != nil {
+		log.Fatalln("ENV Not Found")
+		return
+	}
+	HTTP_PORT := os.Getenv("HTTP_PORT")
+	cmd.Serve(HTTP_PORT)
 }

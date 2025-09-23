@@ -9,6 +9,7 @@ import (
 
 func initRoutes(mux *http.ServeMux, manager *middlewares.Manager) {
 	mux.Handle("GET /", manager.With(handlers.HandleContests))
+	mux.Handle("POST /login", manager.With(handlers.HandleLogin))
 
 	mux.Handle("GET /contest/{contestId}", manager.With(handlers.HandleProblemList))
 
@@ -24,9 +25,7 @@ func initRoutes(mux *http.ServeMux, manager *middlewares.Manager) {
 		//TODO: Auth the user->check if the user have access to that problem->fetch data-> return data
 	}))
 
-	mux.Handle("POST /submit/{problemId}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//TODO: Auth the user->check if the user have access to that problem->add to db->add to queue->return submission Id
-	}))
+	mux.Handle("POST /submissions/submit/{problemId}", manager.With(handlers.HandleSubmit, middlewares.Authenticate))
 
 	//TODO: More Routes to go
 }

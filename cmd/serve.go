@@ -18,6 +18,6 @@ func Serve(HTTP_PORT string) {
 
 	//This will wrap the mux with global middlewares
 	wrapedMux := manager.WrapMux(mux)
-	log.Printf("Server Running at http://localhost%s", HTTP_PORT)
+	log.Printf("Server Running at http://localhost%s\n", HTTP_PORT)
 	http.ListenAndServe(HTTP_PORT, wrapedMux)
 }

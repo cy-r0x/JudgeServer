@@ -13,10 +13,14 @@ type Config struct {
 	SecretKey string
 }
 
+var configuration *Config
+var err error
+
 func loadConfig() (*Config, error) {
 	err := env.Load()
 	if err != nil {
 		log.Fatalln("Env is not correct")
+		return nil, errors.New("Env is not correct")
 	}
 
 	var config Config
@@ -40,5 +44,11 @@ func loadConfig() (*Config, error) {
 }
 
 func GetConfig() (*Config, error) {
-	return loadConfig()
+	if configuration == nil {
+		configuration, err = loadConfig()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return configuration, nil
 }

@@ -1,4 +1,4 @@
-package handlers
+package users
 
 import (
 	"encoding/json"
@@ -22,7 +22,7 @@ type Payload struct {
 	jwt.RegisteredClaims
 }
 
-func HandleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var user UserCreds
 	err := decoder.Decode(&user)

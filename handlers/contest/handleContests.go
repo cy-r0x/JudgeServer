@@ -1,4 +1,4 @@
-package handlers
+package contest
 
 import (
 	"encoding/json"

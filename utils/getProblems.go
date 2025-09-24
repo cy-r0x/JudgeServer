@@ -1,11 +1,14 @@
 package utils
 
-import "github.com/judgenot0/judge-backend/structs"
+type ProblemList struct {
+	Id    int    `json:"id"`
+	Title string `json:"title"`
+}
 
-func GetProblems(contestId int) ([]structs.ProblemList, error) {
-	problemList := []structs.ProblemList{}
+func GetProblems(contestId int) ([]ProblemList, error) {
+	problemList := []ProblemList{}
 	//TODO: Add Dynamic DB fetch of contest problem set
-	problemList = append(problemList, structs.ProblemList{
+	problemList = append(problemList, ProblemList{
 		Id:    1234,
 		Title: "Adding Two Numbers",
 	})

@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -32,8 +31,9 @@ func Authenticate(next http.Handler) http.Handler {
 		accessToken := headerArr[1]
 
 		payload := &Payload{}
-		config, err := config.GetConfig()
+		config, err := config.GetConfig() //dependecy kemne shorabo :"_) !
 		if err != nil {
+			utils.SendResopnse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -45,12 +45,12 @@ func Authenticate(next http.Handler) http.Handler {
 		})
 
 		if err != nil {
-			log.Fatal("Invalid token:", err)
+			utils.SendResopnse(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
 		if !token.Valid {
-			log.Fatal("Token is not valid")
+			utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}
 		fmt.Println("Username from claims:", payload.Username)

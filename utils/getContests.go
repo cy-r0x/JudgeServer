@@ -1,13 +1,18 @@
 package utils
 
-import (
-	"github.com/judgenot0/judge-backend/structs"
-)
+type Contest struct {
+	ContestId   int    `json:"contestId"`
+	ContestName string `json:"contestName"`
+	StartTime   uint64 `json:"startTime"`
+	EndTime     uint64 `json:"endTime"`
+	Duration    uint64 `json:"duration"`
+	Status      string `json:"status"`
+}
 
-func GetContests() ([]structs.Contest, error) {
-	contests := []structs.Contest{}
+func GetContests() ([]Contest, error) {
+	contests := []Contest{}
 	//TODO: Add Dynamic DB fetch of contests
-	contests = append(contests, structs.Contest{
+	contests = append(contests, Contest{
 		ContestId:   10,
 		ContestName: "UTA-2025",
 		StartTime:   1234,

@@ -7,4 +7,5 @@ import (
 )
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manager) {
+	mux.Handle("GET /contests/{contestId}/{problemId}", manager.With(h.GetProblem))
 }

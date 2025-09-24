@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/judgenot0/judge-backend/config"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -22,7 +21,7 @@ type Payload struct {
 	jwt.RegisteredClaims
 }
 
-func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var user UserCreds
 	err := decoder.Decode(&user)
@@ -38,11 +37,7 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
 		},
 	}
-	config, err := config.GetConfig()
-	if err != nil {
-		return
-	}
-	secret := config.SecretKey
+	secret := h.config.SecretKey
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	accessToken, err := token.SignedString([]byte(secret))
 	if err != nil {

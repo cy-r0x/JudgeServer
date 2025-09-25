@@ -19,8 +19,8 @@ var err error
 func loadConfig() (*Config, error) {
 	err := env.Load()
 	if err != nil {
-		log.Fatalln("Env is not correct")
-		return nil, errors.New("Env is not correct")
+		log.Fatalln("Env Not Found, please make sure there is .env file in the root directory")
+		return nil, errors.New("Env Not Found, please make sure there is .env file in the root directory")
 	}
 
 	var config Config

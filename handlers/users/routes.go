@@ -6,7 +6,7 @@ import (
 	"github.com/judgenot0/judge-backend/middlewares"
 )
 
-func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manager) {
+func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manager, middlewares *middlewares.Middlewares) {
 	mux.Handle("POST /login", manager.With(h.Login))
 	mux.Handle("POST /register", manager.With(h.Register))
 	mux.Handle("POST /logout", manager.With(h.Logout))

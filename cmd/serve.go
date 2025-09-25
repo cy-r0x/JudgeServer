@@ -20,7 +20,9 @@ func Serve() {
 		os.Exit(1)
 	}
 	//Init new Middleware Manager with Default Middlewares
-	manager := middlewares.NewManager(config)
+	manager := middlewares.NewManager()
+	middlewares := middlewares.NewMiddlewares(config)
+	
 	manager.Use(middlewares.Prefilght, middlewares.Cors, middlewares.Logger)
 
 	contestHandler := contest.NewHandler()
@@ -31,11 +33,11 @@ func Serve() {
 
 	//Init New Mux and Init Routes
 	mux := http.NewServeMux()
-	contestHandler.RegisterRoutes(mux, manager)
-	problemHandler.RegisterRoutes(mux, manager)
-	setterHandler.RegisterRoutes(mux, manager)
-	submissionsHandler.RegisterRoutes(mux, manager)
-	usersHandler.RegisterRoutes(mux, manager)
+	contestHandler.RegisterRoutes(mux, manager, middlewares)
+	problemHandler.RegisterRoutes(mux, manager, middlewares)
+	setterHandler.RegisterRoutes(mux, manager, middlewares)
+	submissionsHandler.RegisterRoutes(mux, manager, middlewares)
+	usersHandler.RegisterRoutes(mux, manager, middlewares)
 
 	//This will wrap the mux with global middlewares
 	wrapedMux := manager.WrapMux(mux)

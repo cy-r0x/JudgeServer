@@ -1,9 +1,13 @@
 package utils
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
+)
 
-func SendResopnse(w http.ResponseWriter, statusCode int, message string) {
+func SendResopnse(w http.ResponseWriter, statusCode int, message any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	w.Write([]byte(message))
+	encoder := json.NewEncoder(w)
+	encoder.Encode(message)
 }

@@ -18,7 +18,16 @@ type UserCreds struct {
 type Payload struct {
 	Sub      string `json:"sub"`
 	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
+}
+
+type Data struct {
+	Sub      string `json:"sub"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	jwt.RegisteredClaims
+	AccessToken string `json:"accessToken"`
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -33,6 +42,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	payload := &Payload{
 		Sub:      "123456",
 		Username: "Prantor",
+		Role:     "user",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
 		},
@@ -44,5 +54,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		log.Fatalln(err)
 		return
 	}
-	utils.SendResopnse(w, http.StatusAccepted, accessToken)
+	data := Data{
+		Sub:              payload.Sub,
+		Username:         payload.Username,
+		Role:             payload.Role,
+		RegisteredClaims: payload.RegisteredClaims,
+		AccessToken:      accessToken,
+	}
+	utils.SendResopnse(w, http.StatusAccepted, data)
 }

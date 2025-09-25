@@ -13,10 +13,9 @@ type Manager struct {
 	config            *config.Config
 }
 
-func NewManager(config *config.Config) *Manager {
+func NewManager() *Manager {
 	return &Manager{
 		globalMiddlewares: make([]Middleware, 0),
-		config:            config,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/judgenot0/judge-backend/handlers/setter"
 	"github.com/judgenot0/judge-backend/handlers/submissions"
 	"github.com/judgenot0/judge-backend/handlers/users"
+	"github.com/judgenot0/judge-backend/infra/db"
 	"github.com/judgenot0/judge-backend/middlewares"
 )
 
@@ -19,17 +20,23 @@ func Serve() {
 	if err != nil {
 		os.Exit(1)
 	}
+
+	dbConn, err := db.NewConnection()
+	if err != nil {
+		os.Exit(1)
+	}
+
 	//Init new Middleware Manager with Default Middlewares
 	manager := middlewares.NewManager()
 	middlewares := middlewares.NewMiddlewares(config)
-	
+
 	manager.Use(middlewares.Prefilght, middlewares.Cors, middlewares.Logger)
 
 	contestHandler := contest.NewHandler()
 	problemHandler := problem.NewHandler()
 	setterHandler := setter.NewHandler()
 	submissionsHandler := submissions.NewHandler()
-	usersHandler := users.NewHandler(config)
+	usersHandler := users.NewHandler(config, dbConn)
 
 	//Init New Mux and Init Routes
 	mux := http.NewServeMux()

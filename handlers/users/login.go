@@ -8,58 +8,66 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/judgenot0/judge-backend/utils"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserCreds struct {
-	Email    string `json:"email"`
+	Username string `json:"username" db:"username"`
 	Password string `json:"password"`
 }
 
 type Payload struct {
-	Sub      string `json:"sub"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	jwt.RegisteredClaims
-}
-
-type Data struct {
-	Sub      string `json:"sub"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	jwt.RegisteredClaims
+	Sub         string `json:"sub"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
 	AccessToken string `json:"accessToken"`
+	jwt.RegisteredClaims
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var user UserCreds
-	err := decoder.Decode(&user)
-	if err != nil {
-		utils.SendResopnse(w, http.StatusBadRequest, "Wrong Structure")
+	var creds UserCreds
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+		utils.SendResopnse(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
-	//TODO: check if the usercreds is correct or not
+
+	// fetch user from DB
+	var dbUser User
+	query := `SELECT id, username, password, role FROM users WHERE username=$1 LIMIT 1`
+	err := h.db.Get(&dbUser, query, creds.Username)
+	if err != nil {
+		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid username or password")
+		return
+	}
+
+	// compare hashed password
+	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(creds.Password)); err != nil {
+		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid username or password")
+		return
+	}
+
+	// build payload
 	payload := &Payload{
-		Sub:      "123456",
-		Username: "Prantor",
-		Role:     "user",
+		Sub:      dbUser.Id,
+		Username: dbUser.Username,
+		Role:     dbUser.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
+
+	// sign token
 	secret := h.config.SecretKey
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	accessToken, err := token.SignedString([]byte(secret))
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("error signing jwt:", err)
+		utils.SendResopnse(w, http.StatusInternalServerError, "Could not login")
 		return
 	}
-	data := Data{
-		Sub:              payload.Sub,
-		Username:         payload.Username,
-		Role:             payload.Role,
-		RegisteredClaims: payload.RegisteredClaims,
-		AccessToken:      accessToken,
-	}
-	utils.SendResopnse(w, http.StatusAccepted, data)
+	payload.AccessToken = accessToken
+
+	// success response
+	utils.SendResopnse(w, http.StatusOK, payload)
 }

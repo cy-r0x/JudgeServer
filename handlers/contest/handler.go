@@ -34,7 +34,7 @@ func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h *Handler) ListContest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListContests(w http.ResponseWriter, r *http.Request) {
 	contests := []Contest{}
 	//TODO: Add Dynamic DB fetch of contests
 	utils.SendResopnse(w, http.StatusOK, contests)

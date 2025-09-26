@@ -8,7 +8,7 @@ import (
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manager, middlewares *middlewares.Middlewares) {
 	mux.Handle("POST /login", manager.With(h.Login))
-	mux.Handle("POST /register", manager.With(h.Register))
+	mux.Handle("POST /register", manager.With(h.CreateUser))
 	mux.Handle("POST /logout", manager.With(h.Logout))
 	//TODO: More Routes to go
 }

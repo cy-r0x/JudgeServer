@@ -11,18 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserCreds struct {
-	Username string `json:"username" db:"username"`
-	Password string `json:"password"`
-}
 
-type Payload struct {
-	Sub         string `json:"sub"`
-	Username    string `json:"username"`
-	Role        string `json:"role"`
-	AccessToken string `json:"accessToken"`
-	jwt.RegisteredClaims
-}
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var creds UserCreds

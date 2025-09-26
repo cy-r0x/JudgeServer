@@ -32,10 +32,10 @@ func Serve() {
 
 	manager.Use(middlewares.Prefilght, middlewares.Cors, middlewares.Logger)
 
-	contestHandler := contest.NewHandler()
-	problemHandler := problem.NewHandler()
-	setterHandler := setter.NewHandler()
-	submissionsHandler := submissions.NewHandler()
+	contestHandler := contest.NewHandler(dbConn)
+	problemHandler := problem.NewHandler(dbConn)
+	setterHandler := setter.NewHandler(dbConn)
+	submissionsHandler := submissions.NewHandler(dbConn)
 	usersHandler := users.NewHandler(config, dbConn)
 
 	//Init New Mux and Init Routes

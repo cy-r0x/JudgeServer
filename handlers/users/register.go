@@ -9,15 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type User struct {
-	Id       string `json:"id" db:"id"`
-	Username string `json:"username" db:"username"`
-	Email    string `json:"email" db:"email"`
-	Password string `json:"password" db:"password"`
-	Role     string `json:"role" db:"role"`
-}
-
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		utils.SendResopnse(w, http.StatusBadRequest, "Invalid request payload")

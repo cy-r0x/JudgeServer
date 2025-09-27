@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -40,7 +41,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 		})
 
 		if err != nil {
-			utils.SendResopnse(w, http.StatusUnauthorized, err.Error())
+			utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}
 
@@ -48,6 +49,11 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 			utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}
+
+		// Store payload in context
+		ctx := context.WithValue(r.Context(), "user", payload)
+		r = r.WithContext(ctx)
+
 		next.ServeHTTP(w, r)
 	})
 }

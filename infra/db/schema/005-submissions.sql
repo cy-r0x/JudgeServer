@@ -21,7 +21,7 @@ CREATE TABLE submissions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     FOREIGN KEY (problem_id) REFERENCES problems (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    FOREIGN KEY (contest_id) REFERENCES contest (id) ON DELETE SET NULL
+    FOREIGN KEY (contest_id) REFERENCES contests (id) ON DELETE SET NULL
 );
 
 -- Add indexes for common query patterns

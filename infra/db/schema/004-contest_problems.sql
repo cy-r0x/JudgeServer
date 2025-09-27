@@ -3,7 +3,7 @@ CREATE TABLE contest_problems (
     problem_id BIGINT NOT NULL,
     display_order INTEGER NOT NULL,
     PRIMARY KEY (contest_id, problem_id),
-    FOREIGN KEY (contest_id) REFERENCES contest (id) ON DELETE CASCADE,
+    FOREIGN KEY (contest_id) REFERENCES contests (id) ON DELETE CASCADE,
     FOREIGN KEY (problem_id) REFERENCES problems (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

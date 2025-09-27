@@ -26,6 +26,8 @@ func Serve() {
 		os.Exit(1)
 	}
 
+	db.Migrate(dbConn)
+
 	//Init new Middleware Manager with Default Middlewares
 	manager := middlewares.NewManager()
 	middlewares := middlewares.NewMiddlewares(config)

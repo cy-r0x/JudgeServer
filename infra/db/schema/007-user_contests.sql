@@ -12,7 +12,7 @@ CREATE TABLE user_contests (
     ),
     PRIMARY KEY (user_id, contest_id),
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    FOREIGN KEY (contest_id) REFERENCES contest (id) ON DELETE CASCADE,
+    FOREIGN KEY (contest_id) REFERENCES contests (id) ON DELETE CASCADE,
     FOREIGN KEY (registered_by) REFERENCES users (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

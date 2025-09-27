@@ -6,8 +6,6 @@ CREATE TABLE users (
     role VARCHAR(10) NOT NULL DEFAULT 'user' CHECK (
         role IN ('user', 'admin', 'setter')
     ),
-    allowed_contest BIGINT,
-    FOREIGN KEY (allowed_contest) REFERENCES contest (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -16,8 +14,6 @@ CREATE TABLE users (
 CREATE INDEX idx_users_username ON users (username);
 
 CREATE INDEX idx_users_role ON users (role);
-
-CREATE INDEX idx_users_allowed_contest ON users (allowed_contest);
 
 -- Trigger to automatically update the updated_at timestamp
 CREATE OR REPLACE FUNCTION update_modified_column()

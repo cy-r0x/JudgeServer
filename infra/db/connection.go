@@ -5,20 +5,25 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/judgenot0/judge-backend/config"
 	_ "github.com/lib/pq"
 )
 
-func GetConnectionString() string {
-	user := "postgres"
-	password := "1234"
-	host := "localhost"
-	port := 5432
-	dbname := "judgenot0"
-	return fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=disable", user, password, host, port, dbname)
+func GetConnectionString(cfg *config.DBConfig) string {
+	user := cfg.DB_USER
+	password := cfg.DB_PASSWORD
+	host := cfg.DB_HOST
+	port := cfg.DB_PORT
+	dbname := cfg.DB_NAME
+	sslmode := "disable"
+	if cfg.ENABLE_SSL_MODE == "true" {
+		sslmode = "require"
+	}
+	return fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=%s", user, password, host, port, dbname, sslmode)
 }
 
-func NewConnection() (*sqlx.DB, error) {
-	dbSource := GetConnectionString()
+func NewConnection(cfg *config.DBConfig) (*sqlx.DB, error) {
+	dbSource := GetConnectionString(cfg)
 	dbCon, err := sqlx.Connect("postgres", dbSource)
 	if err != nil {
 		log.Println(err)

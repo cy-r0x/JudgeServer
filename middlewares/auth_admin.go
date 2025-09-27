@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/utils"
@@ -15,7 +14,6 @@ func (m *Middlewares) AuthenticateAdmin(next http.Handler) http.Handler {
 				utils.SendResopnse(w, http.StatusUnauthorized, "User information not found")
 				return
 			}
-			log.Println(payload)
 			if payload.Role != "admin" {
 				utils.SendResopnse(w, http.StatusUnauthorized, "Unauthorized")
 				return

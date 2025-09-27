@@ -21,7 +21,7 @@ func Serve() {
 		os.Exit(1)
 	}
 
-	dbConn, err := db.NewConnection()
+	dbConn, err := db.NewConnection(config.DB)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -48,6 +48,6 @@ func Serve() {
 
 	//This will wrap the mux with global middlewares
 	wrapedMux := manager.WrapMux(mux)
-	log.Printf("Server Running at http://localhost%s\n", config.HttpPort)
-	http.ListenAndServe(config.HttpPort, wrapedMux)
+	log.Printf("Server Running at http://localhost:%s\n", config.HttpPort)
+	http.ListenAndServe(":"+config.HttpPort, wrapedMux)
 }

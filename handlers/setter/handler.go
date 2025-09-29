@@ -27,5 +27,5 @@ func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 	}
 	setterId := payload.Sub
 	log.Println(setterId)
-	//TODO: Get Al
+	//TODO: Get All Setter Problems -> Send as Response
 }

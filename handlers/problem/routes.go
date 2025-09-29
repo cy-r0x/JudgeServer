@@ -7,4 +7,5 @@ import (
 )
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manager, middlewares *middlewares.Middlewares) {
+	mux.Handle("POST /api/problems/create", manager.With(h.CreateProblem, middlewares.Authenticate, middlewares.AuthenticateSetter))
 }

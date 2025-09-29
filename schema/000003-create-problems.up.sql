@@ -3,7 +3,9 @@ CREATE TABLE IF NOT EXISTS problems (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
-    statement TEXT NOT NULL, -- can later switch to JSONB if needed
+    statement TEXT NOT NULL,
+    input_statment TEXT NOT NULL,
+    output_statement TEXT NOT NULL,
     time_limit_ms INT NOT NULL,
     memory_limit_mb INT NOT NULL,
     created_by BIGINT REFERENCES users (id) ON DELETE SET NULL,

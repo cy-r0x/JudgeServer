@@ -1,17 +1,21 @@
 package users
 
 import (
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
 )
 
 type User struct {
-	Id       string `json:"id" db:"id"`
-	Username string `json:"username" db:"username"`
-	Email    string `json:"email" db:"email"`
-	Password string `json:"password" db:"password"`
-	Role     string `json:"role" db:"role"`
+	Id             int64     `json:"id" db:"id"`
+	Username       string    `json:"username" db:"username"`
+	Email          string    `json:"email" db:"email"`
+	Password       string    `json:"password" db:"password"`
+	Role           string    `json:"role" db:"role"`
+	AllowedContest int64     `json:"allowed_contest" db:"allowed_contest"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 }
 
 type UserCreds struct {
@@ -20,7 +24,7 @@ type UserCreds struct {
 }
 
 type Payload struct {
-	Sub         string `json:"sub"`
+	Sub         int64  `json:"sub"`
 	Username    string `json:"username"`
 	Role        string `json:"role"`
 	AccessToken string `json:"accessToken"`

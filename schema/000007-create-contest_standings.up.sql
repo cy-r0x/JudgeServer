@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS contest_standings (
     user_id BIGINT REFERENCES users (id) ON DELETE CASCADE,
     score INT NOT NULL DEFAULT 0,
     penalty INT NOT NULL DEFAULT 0,
-    rank INT,
     PRIMARY KEY (contest_id, user_id)
 );
 

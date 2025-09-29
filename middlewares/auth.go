@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -11,9 +12,10 @@ import (
 )
 
 type Payload struct {
-	Sub      string `json:"sub"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	Sub         int64  `json:"sub"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
+	AccessToken string `json:"accessToken"`
 	jwt.RegisteredClaims
 }
 
@@ -41,6 +43,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 		})
 
 		if err != nil {
+			log.Println(err)
 			utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}

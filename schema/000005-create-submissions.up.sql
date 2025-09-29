@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS submissions (
     language VARCHAR(30) NOT NULL,
     source_code TEXT NOT NULL,
     verdict VARCHAR(30) DEFAULT 'Pending',
-    execution_time_ms INT,
-    memory_used_kb INT,
+    execution_time INT,
+    memory_used INT,
     submitted_at TIMESTAMPTZ DEFAULT NOW()
 );
 

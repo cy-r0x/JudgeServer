@@ -2,18 +2,26 @@ package contest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
 type Contest struct {
-	ContestId   int    `json:"contestId"`
-	ContestName string `json:"contestName"`
-	StartTime   uint64 `json:"startTime"`
-	EndTime     uint64 `json:"endTime"`
-	Duration    uint64 `json:"duration"`
-	Status      string `json:"status"`
+	Id              int64     `json:"id" db:"id"`
+	Title           string    `json:"title" db:"title"`
+	Description     string    `json:"description" db:"description"`
+	StartTime       time.Time `json:"start_time" db:"start_time"`
+	DurationSeconds int64     `json:"duration_seconds" db:"duration_seconds"`
+	Status          string    `json:"status" db:"status"`
+	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+}
+
+type ContestProblem struct {
+	ContestId int64  `json:"contest_id" db:"contest_id"`
+	ProblemId int64  `json:"problem_id" db:"problem_id"`
+	Index     string `json:"index" db:"index"`
 }
 
 type Handler struct {

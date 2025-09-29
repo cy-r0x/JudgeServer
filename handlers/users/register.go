@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -30,6 +31,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.Password = string(hashedPassword)
+	user.CreatedAt = time.Now()
 
 	// default role if not provided
 	if user.Role == "" {
@@ -38,8 +40,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	// insert into DB
 	query := `
-		INSERT INTO users (username, email, password, role)
-		VALUES (:username, :email, :password, :role)
+		INSERT INTO users (username, email, password, role, allowed_contest, created_at)
+		VALUES (:username, :email, :password, :role, :allowed_contest, :created_at)
 		RETURNING id;
 	`
 

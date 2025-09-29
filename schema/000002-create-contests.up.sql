@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS contests (
             'ended'
         )
     ),
-    created_by BIGINT REFERENCES users (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

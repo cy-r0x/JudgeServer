@@ -22,7 +22,7 @@ func NewHandler(db *sqlx.DB) *Handler {
 func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
 		return
 	}
 	setterId := payload.Sub

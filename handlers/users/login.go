@@ -16,7 +16,7 @@ import (
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var creds UserCreds
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-		utils.SendResopnse(w, http.StatusBadRequest, "Bad Request")
+		utils.SendResponse(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
 
@@ -25,13 +25,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	query := `SELECT id, username, password, role FROM users WHERE username=$1 LIMIT 1`
 	err := h.db.Get(&dbUser, query, creds.Username)
 	if err != nil {
-		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid username or password")
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 
 	// compare hashed password
 	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(creds.Password)); err != nil {
-		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid username or password")
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 
@@ -52,11 +52,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	accessToken, err := token.SignedString([]byte(secret))
 	if err != nil {
 		log.Println("error signing jwt:", err)
-		utils.SendResopnse(w, http.StatusInternalServerError, "Could not login")
+		utils.SendResponse(w, http.StatusInternalServerError, "Could not login")
 		return
 	}
 	payload.AccessToken = accessToken
 
 	// success response
-	utils.SendResopnse(w, http.StatusOK, payload)
+	utils.SendResponse(w, http.StatusOK, payload)
 }

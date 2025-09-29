@@ -13,13 +13,13 @@ import (
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		utils.SendResopnse(w, http.StatusBadRequest, "Invalid request payload")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	// basic validation
 	if user.Username == "" || user.Email == "" || user.Password == "" {
-		utils.SendResopnse(w, http.StatusBadRequest, "username, email and password are required")
+		utils.SendResponse(w, http.StatusBadRequest, "username, email and password are required")
 		return
 	}
 
@@ -27,7 +27,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Println(err)
-		utils.SendResopnse(w, http.StatusInternalServerError, "Internal Server Error")
+		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	user.Password = string(hashedPassword)
@@ -48,7 +48,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.NamedQuery(query, user)
 	if err != nil {
 		log.Println(err)
-		utils.SendResopnse(w, http.StatusInternalServerError, "Internal Server Error")
+		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	defer rows.Close()
@@ -56,13 +56,13 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if rows.Next() {
 		if err := rows.Scan(&user.Id); err != nil {
 			log.Println(err)
-			utils.SendResopnse(w, http.StatusInternalServerError, "Internal Server Error")
+			utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 			return
 		}
 	}
 
-	// don’t send password back
+	// don't send password back
 	user.Password = ""
 
-	utils.SendResopnse(w, http.StatusCreated, user)
+	utils.SendResponse(w, http.StatusCreated, user)
 }

@@ -50,7 +50,7 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
 		return
 	}
 
@@ -74,7 +74,7 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListProblems(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
 		return
 	}
 	switch payload.Role {
@@ -88,7 +88,7 @@ func (h *Handler) ListProblems(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
 		return
 	}
 	switch payload.Role {
@@ -104,11 +104,11 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
 		return
 	}
 	if payload.Role == "user" {
-		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
 	//Only Setter and Admin can update the problem

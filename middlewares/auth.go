@@ -23,12 +23,12 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		if header == "" {
-			utils.SendResopnse(w, http.StatusUnauthorized, "Dhur hala tui hocker")
+			utils.SendResponse(w, http.StatusUnauthorized, "Dhur hala tui hocker")
 			return
 		}
 		headerArr := strings.Split(header, " ")
 		if len(headerArr) != 2 {
-			utils.SendResopnse(w, http.StatusUnauthorized, "Token koi beda")
+			utils.SendResponse(w, http.StatusUnauthorized, "Token koi beda")
 			return
 		}
 		accessToken := headerArr[1]
@@ -44,12 +44,12 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 
 		if err != nil {
 			log.Println(err)
-			utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
+			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}
 
 		if !token.Valid {
-			utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
+			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}
 

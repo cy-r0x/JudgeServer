@@ -44,8 +44,8 @@ func NewHandler(db *sqlx.DB) *Handler {
 func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
+	if (!ok) {
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
 	userId := payload.Sub
@@ -57,8 +57,8 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
+	if (!ok) {
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
 	userId := payload.Sub
@@ -72,8 +72,8 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if !ok {
-		utils.SendResopnse(w, http.StatusUnauthorized, "Invalid Token")
+	if (!ok) {
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
 	userId := payload.Sub

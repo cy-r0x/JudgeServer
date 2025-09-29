@@ -26,7 +26,10 @@ func Serve() {
 		os.Exit(1)
 	}
 
-	db.Migrate(dbConn)
+	err = db.Migrate(dbConn, "./schema")
+	if err != nil {
+		os.Exit(1)
+	}
 
 	//Init new Middleware Manager with Default Middlewares
 	manager := middlewares.NewManager()

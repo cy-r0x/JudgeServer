@@ -10,5 +10,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manage
 	mux.Handle("GET /api/contests", manager.With(h.ListContests))
 	mux.Handle("GET /api/contests/{contestId}", manager.With(h.GetContest))
 	mux.Handle("POST /api/contests/create", manager.With(h.CreateContest, middlewares.Authenticate, middlewares.AuthenticateAdmin))
-	mux.Handle("POST /api/contests/update", manager.With(h.UpdateContestIndex, middlewares.Authenticate, middlewares.AuthenticateAdmin))
+	mux.Handle("PUT /api/contests/update/index", manager.With(h.UpdateContestIndex, middlewares.Authenticate, middlewares.AuthenticateAdmin))
+	mux.Handle("PUT /api/contest/update", manager.With(h.UpdateContest, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 }

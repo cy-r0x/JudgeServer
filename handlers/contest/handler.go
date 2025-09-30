@@ -15,7 +15,7 @@ type Contest struct {
 	Description     string    `json:"description" db:"description"`
 	StartTime       time.Time `json:"start_time" db:"start_time"`
 	DurationSeconds int64     `json:"duration_seconds" db:"duration_seconds"`
-	Status          string    `json:"status" db:"status"`
+	Status          string    `json:"status"`
 	CreatedAt       time.Time `json:"created_at" db:"created_at"`
 }
 
@@ -36,7 +36,14 @@ func NewHandler(db *sqlx.DB) *Handler {
 }
 
 func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
-
+	decoder := json.NewDecoder(r.Body)
+	var contest Contest
+	err := decoder.Decode(&contest)
+	if err != nil {
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	//TODO: Insert Contest into DB and Send Response
 }
 
 func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {

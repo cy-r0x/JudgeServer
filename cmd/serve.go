@@ -9,6 +9,7 @@ import (
 	"github.com/judgenot0/judge-backend/handlers/contest"
 	"github.com/judgenot0/judge-backend/handlers/problem"
 	"github.com/judgenot0/judge-backend/handlers/setter"
+	"github.com/judgenot0/judge-backend/handlers/standings"
 	"github.com/judgenot0/judge-backend/handlers/submissions"
 	"github.com/judgenot0/judge-backend/handlers/users"
 	"github.com/judgenot0/judge-backend/infra/db"
@@ -40,7 +41,8 @@ func Serve() {
 	contestHandler := contest.NewHandler(dbConn)
 	problemHandler := problem.NewHandler(dbConn)
 	setterHandler := setter.NewHandler(dbConn)
-	submissionsHandler := submissions.NewHandler(dbConn)
+	submissionsHandler := submissions.NewHandler(dbConn, config)
+	standingsHandler := standings.NewHandler(dbConn)
 	usersHandler := users.NewHandler(config, dbConn)
 
 	//Init New Mux and Init Routes
@@ -49,6 +51,7 @@ func Serve() {
 	problemHandler.RegisterRoutes(mux, manager, middlewares)
 	setterHandler.RegisterRoutes(mux, manager, middlewares)
 	submissionsHandler.RegisterRoutes(mux, manager, middlewares)
+	standingsHandler.RegisterRoutes(mux, manager, middlewares)
 	usersHandler.RegisterRoutes(mux, manager, middlewares)
 
 	//This will wrap the mux with global middlewares

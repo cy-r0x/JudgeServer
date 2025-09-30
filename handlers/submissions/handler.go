@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/judgenot0/judge-backend/config"
 	"github.com/judgenot0/judge-backend/middlewares"
 	"github.com/judgenot0/judge-backend/utils"
 )
@@ -19,8 +20,8 @@ type Submission struct {
 	Language      string    `json:"language" db:"language"`
 	SourceCode    string    `json:"source_code" db:"source_code"`
 	Verdict       string    `json:"verdict" db:"verdict"`
-	ExecutionTime int       `json:"execution_time" db:"execution_time"`
-	MemoryUsed    int       `json:"memory_used" db:"memory_used"`
+	ExecutionTime float32   `json:"execution_time" db:"execution_time"`
+	MemoryUsed    float32   `json:"memory_used" db:"memory_used"`
 	SubmittedAt   time.Time `json:"submitted_at" db:"submitted_at"`
 }
 
@@ -32,10 +33,11 @@ type UserSubmission struct {
 }
 
 type Handler struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	config *config.Config
 }
 
-func NewHandler(db *sqlx.DB) *Handler {
+func NewHandler(db *sqlx.DB, config *config.Config) *Handler {
 	return &Handler{
 		db: db,
 	}
@@ -44,7 +46,7 @@ func NewHandler(db *sqlx.DB) *Handler {
 func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if (!ok) {
+	if !ok {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
@@ -55,9 +57,19 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	//TODO: Add to DB -> get submission ID -> Submit to Queue
 }
 
+func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
+	engineData, ok := r.Context().Value("engineData").(*middlewares.EngineData)
+	if !ok {
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
+		return
+	}
+	log.Println(engineData)
+	// TODO: Update the DB
+}
+
 func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if (!ok) {
+	if !ok {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
@@ -72,7 +84,7 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if (!ok) {
+	if !ok {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}

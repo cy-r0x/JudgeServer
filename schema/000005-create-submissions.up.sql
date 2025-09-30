@@ -8,11 +8,10 @@ CREATE TABLE IF NOT EXISTS submissions (
     language VARCHAR(30) NOT NULL,
     source_code TEXT NOT NULL,
     verdict VARCHAR(30) DEFAULT 'Pending',
-    execution_time INT,
-    memory_used INT,
+    execution_time FLOAT,
+    memory_used FLOAT,
     submitted_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Indexes
 CREATE INDEX idx_submissions_user ON submissions (user_id);
 

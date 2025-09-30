@@ -6,13 +6,6 @@ CREATE TABLE IF NOT EXISTS contests (
     description TEXT,
     start_time TIMESTAMPTZ NOT NULL,
     duration_seconds BIGINT NOT NULL,
-    status VARCHAR(20) NOT NULL CHECK (
-        status IN (
-            'upcoming',
-            'ongoing',
-            'ended'
-        )
-    ),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

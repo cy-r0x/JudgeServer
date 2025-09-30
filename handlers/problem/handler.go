@@ -102,17 +102,5 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
-	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if !ok {
-		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
-		return
-	}
-	if payload.Role == "user" {
-		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
-		return
-	}
-	//Only Setter and Admin can update the problem
+	//Only Setter can update the problem
 }
-
-// func (h *Handler) DeleteProblem(w http.ResponseWriter, r *http.Request) {
-// }

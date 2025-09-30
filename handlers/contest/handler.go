@@ -1,6 +1,7 @@
 package contest
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -39,7 +40,19 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var contest Contest
+	decoder.Decode(&contest)
 
+	//TODO: Update Contest into DB
+}
+
+func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var contestProblem ContestProblem
+	decoder.Decode(&contestProblem)
+
+	//TODO: Update Problem Index
 }
 
 func (h *Handler) ListContests(w http.ResponseWriter, r *http.Request) {
@@ -49,9 +62,10 @@ func (h *Handler) ListContests(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func (h *Handler) DeleteContest(w http.ResponseWriter, r *http.Request) {
-
+	contestId := r.PathValue("contestId")
+	if contestId == "" {
+		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found")
+		return
+	}
+	//TODO: Get Contest Information -> Get Contest Problems -> Send Response
 }

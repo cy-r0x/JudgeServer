@@ -21,6 +21,7 @@ type Config struct {
 	HttpPort  string
 	SecretKey string
 	DB        *DBConfig
+	EngineKey string
 }
 
 var configuration *Config
@@ -49,6 +50,13 @@ func loadConfig() (*Config, error) {
 		return nil, errors.New("JWT_SECRET not defined")
 	}
 	config.SecretKey = secret_key
+
+	engine_key := os.Getenv("ENGINE_KEY")
+	if engine_key == "" {
+		log.Fatalln("ENGINE_KEY not defined")
+		return nil, errors.New("ENGINE_KEY not defined")
+	}
+	config.EngineKey = engine_key
 
 	// Configure database
 	dbConfig := &DBConfig{

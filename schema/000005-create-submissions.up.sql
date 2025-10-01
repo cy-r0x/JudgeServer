@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS submissions (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users (id) ON DELETE CASCADE,
+    username VARCHAR(50) REFERENCES users (username) ON DELETE CASCADE,
     problem_id BIGINT REFERENCES problems (id) ON DELETE CASCADE,
     contest_id BIGINT REFERENCES contests (id) ON DELETE SET NULL,
     language VARCHAR(30) NOT NULL,

@@ -11,8 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
-
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var creds UserCreds
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
@@ -22,7 +20,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	// fetch user from DB
 	var dbUser User
-	query := `SELECT id, username, password, role FROM users WHERE username=$1 LIMIT 1`
+	query := `SELECT id, full_name, username, password, role, room_no, pc_no, allowed_contest FROM users WHERE username=$1 LIMIT 1`
 	err := h.db.Get(&dbUser, query, creds.Username)
 	if err != nil {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")
@@ -37,9 +35,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	// build payload
 	payload := &Payload{
-		Sub:      dbUser.Id,
-		Username: dbUser.Username,
-		Role:     dbUser.Role,
+		Sub:            dbUser.Id,
+		FullName:       dbUser.FullName,
+		Username:       dbUser.Username,
+		Role:           dbUser.Role,
+		RoomNo:         dbUser.RoomNo,
+		PcNo:           dbUser.PcNo,
+		AllowedContest: dbUser.AllowedContest,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -56,7 +58,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload.AccessToken = accessToken
-
 	// success response
 	utils.SendResponse(w, http.StatusOK, payload)
 }

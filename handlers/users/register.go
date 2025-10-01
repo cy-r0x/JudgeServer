@@ -40,8 +40,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	// insert into DB
 	query := `
-		INSERT INTO users (username, email, password, role, allowed_contest, created_at)
-		VALUES (:username, :email, :password, :role, :allowed_contest, :created_at)
+		INSERT INTO users (full_name, username, email, password, role, allowed_contest, created_at)
+		VALUES (:full_name,:username, :email, :password, :role, :allowed_contest, :created_at)
 		RETURNING id;
 	`
 

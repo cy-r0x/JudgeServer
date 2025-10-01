@@ -15,9 +15,9 @@ type User struct {
 	Email          string    `json:"email" db:"email"`
 	Password       string    `json:"password" db:"password"`
 	Role           string    `json:"role" db:"role"`
-	RoomNo         string    `json:"room_no" db:"room_no"`
-	PcNo           int       `json:"pc_no" db:"pc_no"`
-	AllowedContest int64     `json:"allowed_contest" db:"allowed_contest"`
+	RoomNo         *string   `json:"room_no" db:"room_no"`
+	PcNo           *int      `json:"pc_no" db:"pc_no"`
+	AllowedContest *int64    `json:"allowed_contest" db:"allowed_contest"`
 	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 }
 
@@ -27,13 +27,14 @@ type UserCreds struct {
 }
 
 type Payload struct {
-	Sub         int64  `json:"sub"`
-	FullName    string `json:"full_name"`
-	Username    string `json:"username"`
-	Role        string `json:"role"`
-	RoomNo      string `json:"room_no"`
-	PcNo        int    `json:"pc_no"`
-	AccessToken string `json:"accessToken"`
+	Sub            int64   `json:"sub"`
+	FullName       string  `json:"full_name"`
+	Username       string  `json:"username"`
+	Role           string  `json:"role"`
+	RoomNo         *string `json:"room_no"`
+	PcNo           *int    `json:"pc_no"`
+	AllowedContest *int64  `json:"allowed_contest"`
+	AccessToken    string  `json:"access_token"`
 	jwt.RegisteredClaims
 }
 

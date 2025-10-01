@@ -9,7 +9,7 @@ import (
 func (m *Middlewares) AuthenticateSetter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		payload, ok := r.Context().Value("user").(*Payload)
-		if (!ok) {
+		if !ok {
 			utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
 			return
 		}

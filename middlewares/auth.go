@@ -12,10 +12,14 @@ import (
 )
 
 type Payload struct {
-	Sub         int64  `json:"sub"`
-	Username    string `json:"username"`
-	Role        string `json:"role"`
-	AccessToken string `json:"accessToken"`
+	Sub            int64   `json:"sub"`
+	FullName       string  `json:"full_name"`
+	Username       string  `json:"username"`
+	Role           string  `json:"role"`
+	RoomNo         *string `json:"room_no"`
+	PcNo           *int    `json:"pc_no"`
+	AllowedContest *int64  `json:"allowed_contest"`
+	AccessToken    string  `json:"accessToken"`
 	jwt.RegisteredClaims
 }
 
@@ -23,12 +27,12 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		if header == "" {
-			utils.SendResponse(w, http.StatusUnauthorized, "Dhur hala tui hocker")
+			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required")
 			return
 		}
 		headerArr := strings.Split(header, " ")
 		if len(headerArr) != 2 {
-			utils.SendResponse(w, http.StatusUnauthorized, "Token koi beda")
+			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format")
 			return
 		}
 		accessToken := headerArr[1]

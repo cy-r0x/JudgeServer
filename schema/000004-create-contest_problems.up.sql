@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS contest_problems (
     contest_id BIGINT REFERENCES contests (id) ON DELETE CASCADE,
     problem_id BIGINT REFERENCES problems (id) ON DELETE CASCADE,
-    index CHAR(1) NOT NULL, -- like A, B, C
+    index INT NOT NULL,
     PRIMARY KEY (contest_id, problem_id)
 );
 

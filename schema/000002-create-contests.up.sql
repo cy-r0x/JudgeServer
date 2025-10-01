@@ -10,6 +10,4 @@ CREATE TABLE IF NOT EXISTS contests (
 );
 
 -- Indexes
-CREATE INDEX idx_contests_status ON contests (status);
-
 CREATE INDEX idx_contests_start_time ON contests (start_time);

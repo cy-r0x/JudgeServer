@@ -1,12 +1,9 @@
 package contest
 
 import (
-	"encoding/json"
-	"net/http"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/judgenot0/judge-backend/utils"
 )
 
 type Contest struct {
@@ -20,9 +17,9 @@ type Contest struct {
 }
 
 type ContestProblem struct {
-	ContestId int64  `json:"contest_id" db:"contest_id"`
-	ProblemId int64  `json:"problem_id" db:"problem_id"`
-	Index     string `json:"index" db:"index"`
+	ContestId int64 `json:"contest_id" db:"contest_id"`
+	ProblemId int64 `json:"problem_id" db:"problem_id"`
+	Index     int   `json:"index" db:"index"`
 }
 
 type Handler struct {
@@ -33,46 +30,4 @@ func NewHandler(db *sqlx.DB) *Handler {
 	return &Handler{
 		db: db,
 	}
-}
-
-func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var contest Contest
-	err := decoder.Decode(&contest)
-	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-	//TODO: Insert Contest into DB and Send Response
-}
-
-func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var contest Contest
-	decoder.Decode(&contest)
-
-	//TODO: Update Contest into DB
-}
-
-func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var contestProblem ContestProblem
-	decoder.Decode(&contestProblem)
-
-	//TODO: Update Problem Index
-}
-
-func (h *Handler) ListContests(w http.ResponseWriter, r *http.Request) {
-	contests := []Contest{}
-	//TODO: Add Dynamic DB fetch of contests
-	utils.SendResponse(w, http.StatusOK, contests)
-}
-
-func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
-	contestId := r.PathValue("contestId")
-	if contestId == "" {
-		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found")
-		return
-	}
-	//TODO: Get Contest Information -> Get Contest Problems -> Send Response
 }

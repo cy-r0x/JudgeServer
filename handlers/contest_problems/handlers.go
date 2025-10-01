@@ -30,7 +30,7 @@ func NewHandler(db *sqlx.DB) *Handler {
 
 func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	contestId := r.PathValue("contestId")
-	
+
 	// Convert contestId to int64
 	contestIdInt, err := strconv.ParseInt(contestId, 10, 64)
 	if err != nil {

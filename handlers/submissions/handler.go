@@ -16,8 +16,8 @@ type Submission struct {
 	Language      string    `json:"language" db:"language"`
 	SourceCode    string    `json:"source_code" db:"source_code"`
 	Verdict       string    `json:"verdict" db:"verdict"`
-	ExecutionTime float32   `json:"execution_time" db:"execution_time"`
-	MemoryUsed    float32   `json:"memory_used" db:"memory_used"`
+	ExecutionTime *float32  `json:"execution_time" db:"execution_time"`
+	MemoryUsed    *float32  `json:"memory_used" db:"memory_used"`
 	SubmittedAt   time.Time `json:"submitted_at" db:"submitted_at"`
 }
 

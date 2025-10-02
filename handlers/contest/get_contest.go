@@ -47,41 +47,41 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 	// Get Contest Problems
 	type Problem struct {
-		Id        int64  `json:"id"`
-		Title     string `json:"title"`
-		Slug      string `json:"slug"`
-		Index     int    `json:"index"`
-		ContestId int64  `json:"contest_id"`
+		Id    int64  `json:"id"`
+		Title string `json:"title"`
+		Slug  string `json:"slug"`
+		Index int    `json:"index"`
 	}
 
 	problems := []Problem{}
 
-	// First get the contest problems data from contest_problems table
-	// then join with problems table to get title and slug
-	problemsQuery := `
-		SELECT cp.problem_id, p.title, p.slug, cp.index, cp.contest_id
+	if contest.Status == "RUNNING" {
+		// First get the contest problems data from contest_problems table
+		// then join with problems table to get title and slug
+		problemsQuery := `
+		SELECT cp.problem_id, p.title, p.slug, cp.index
 		FROM contest_problems cp
 		JOIN problems p ON cp.problem_id = p.id
 		WHERE cp.contest_id = $1
 		ORDER BY cp.index
 	`
 
-	rows, err := h.db.Query(problemsQuery, contestId)
-	if err != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems")
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var problem Problem
-		if err := rows.Scan(&problem.Id, &problem.Title, &problem.Slug, &problem.Index, &problem.ContestId); err != nil {
-			utils.SendResponse(w, http.StatusInternalServerError, "Error parsing problem data")
+		rows, err := h.db.Query(problemsQuery, contestId)
+		if err != nil {
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems")
 			return
 		}
-		problems = append(problems, problem)
-	}
+		defer rows.Close()
 
+		for rows.Next() {
+			var problem Problem
+			if err := rows.Scan(&problem.Id, &problem.Title, &problem.Slug, &problem.Index); err != nil {
+				utils.SendResponse(w, http.StatusInternalServerError, "Error parsing problem data")
+				return
+			}
+			problems = append(problems, problem)
+		}
+	}
 	// Prepare response with both contest and problems information
 	response := struct {
 		Contest  Contest   `json:"contest"`

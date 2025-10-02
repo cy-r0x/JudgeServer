@@ -25,6 +25,48 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate required fields
+	if submission.ProblemId == 0 || submission.ContestId == 0 {
+		utils.SendResponse(w, http.StatusBadRequest, "Problem ID and Contest ID are required")
+		return
+	}
+
+	// Check if problem exists
+	var problemExists bool
+	if err := h.db.Get(&problemExists, `SELECT EXISTS(SELECT 1 FROM problems WHERE id=$1)`, submission.ProblemId); err != nil {
+		log.Println("Failed to check problem existence:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
+		return
+	}
+	if !problemExists {
+		utils.SendResponse(w, http.StatusBadRequest, "Problem does not exist")
+		return
+	}
+
+	// Check if contest exists
+	var contestExists bool
+	if err := h.db.Get(&contestExists, `SELECT EXISTS(SELECT 1 FROM contests WHERE id=$1)`, submission.ContestId); err != nil {
+		log.Println("Failed to check contest existence:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
+		return
+	}
+	if !contestExists {
+		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist")
+		return
+	}
+
+	// Check if problem is assigned to the contest
+	var problemInContest bool
+	if err := h.db.Get(&problemInContest, `SELECT EXISTS(SELECT 1 FROM contest_problems WHERE contest_id=$1 AND problem_id=$2)`, submission.ContestId, submission.ProblemId); err != nil {
+		log.Println("Failed to check problem assignment:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
+		return
+	}
+	if !problemInContest {
+		utils.SendResponse(w, http.StatusBadRequest, "Problem is not assigned to this contest")
+		return
+	}
+
 	tx, err := h.db.Begin()
 	if err != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to start transaction")

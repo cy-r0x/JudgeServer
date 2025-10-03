@@ -19,6 +19,7 @@ type Submission struct {
 	ExecutionTime *float32  `json:"execution_time" db:"execution_time"`
 	MemoryUsed    *float32  `json:"memory_used" db:"memory_used"`
 	SubmittedAt   time.Time `json:"submitted_at" db:"submitted_at"`
+	FirstBlood    bool      `json:"first_blood" db:"first_blood"`
 }
 
 type UserSubmission struct {
@@ -35,6 +36,7 @@ type Testcase struct {
 
 type QueueSubmission struct {
 	SubmissionId int64      `json:"submission_id"`
+	ProblemId    int64      `json:"problem_id"`
 	Language     string     `json:"language"`
 	SourceCode   string     `json:"source_code"`
 	Testcases    []Testcase `json:"testcases"`

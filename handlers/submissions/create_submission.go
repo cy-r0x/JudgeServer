@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
 	"github.com/judgenot0/judge-backend/utils"
@@ -43,15 +44,29 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if contest exists
-	var contestExists bool
-	if err := h.db.Get(&contestExists, `SELECT EXISTS(SELECT 1 FROM contests WHERE id=$1)`, submission.ContestId); err != nil {
-		log.Println("Failed to check contest existence:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
+	// Check if contest exists and get contest timing information
+	var contest struct {
+		StartTime       time.Time `db:"start_time"`
+		DurationSeconds int       `db:"duration_seconds"`
+	}
+	err := h.db.Get(&contest, `SELECT start_time, duration_seconds FROM contests WHERE id=$1`, submission.ContestId)
+	if err != nil {
+		log.Println("Failed to get contest details:", err)
+		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist")
 		return
 	}
-	if !contestExists {
-		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist")
+
+	// Check if contest is currently running
+	now := time.Now()
+	endTime := contest.StartTime.Add(time.Duration(contest.DurationSeconds) * time.Second)
+
+	if now.Before(contest.StartTime) {
+		utils.SendResponse(w, http.StatusBadRequest, "Contest has not started yet")
+		return
+	}
+
+	if now.After(endTime) {
+		utils.SendResponse(w, http.StatusBadRequest, "Contest has ended")
 		return
 	}
 

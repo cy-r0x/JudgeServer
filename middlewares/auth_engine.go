@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 type EngineData struct {
 	SubmissionId    int64    `json:"submission_id"`
+	ProblemId       int64    `json:"problem_id"`
 	Verdict         string   `json:"verdict"`
 	ExecutionTime   *float32 `json:"execution_time"`
 	ExecutionMemory *float32 `json:"execution_memory"`
@@ -55,6 +57,7 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 		err := decoder.Decode(&enginePayload)
 
 		if err != nil {
+			log.Println(err)
 			utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}

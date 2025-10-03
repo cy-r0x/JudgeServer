@@ -3,50 +3,20 @@ package submissions
 import (
 	"database/sql"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 )
-
-var acceptedVerdicts = map[string]struct{}{
-	"accepted": {},
-	"ac":       {},
-	"ok":       {},
-}
-
-var penaltyVerdicts = map[string]struct{}{
-	"wrong answer":          {},
-	"wa":                    {},
-	"wronganswer":           {},
-	"wrong_answer":          {},
-	"time limit exceeded":   {},
-	"tle":                   {},
-	"runtime error":         {},
-	"re":                    {},
-	"memory limit exceeded": {},
-	"mle":                   {},
-}
-
-func normalizeVerdict(v string) string {
-	return strings.ToLower(strings.TrimSpace(v))
-}
-
-func isAcceptedVerdict(v string) bool {
-	_, ok := acceptedVerdicts[normalizeVerdict(v)]
-	return ok
-}
-
-func isPenaltyVerdict(v string) bool {
-	_, ok := penaltyVerdicts[normalizeVerdict(v)]
-	return ok
-}
 
 type submissionInfo struct {
 	UserID      int64         `db:"user_id"`
 	ContestID   sql.NullInt64 `db:"contest_id"`
 	ProblemID   int64         `db:"problem_id"`
 	SubmittedAt time.Time     `db:"submitted_at"`
+}
+
+func isAcceptedVerdict(v string) bool {
+	return v == "ac"
 }
 
 func (h *Handler) updateStandingsForAccepted(submissionID int64) {
@@ -87,13 +57,45 @@ func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 		return
 	}
 
+	// Check if this is the first AC for this problem in this contest (first blood)
+	var isFirstBlood bool
+	err = tx.Get(&isFirstBlood, `SELECT NOT EXISTS (
+		SELECT 1 FROM submissions 
+		WHERE contest_id=$1 AND problem_id=$2 
+		AND LOWER(verdict) = 'ac'
+		AND id < $3
+	)`, contestID, info.ProblemID, submissionID)
+	if err != nil {
+		log.Println("standings check first blood error:", err)
+		return
+	}
+
+	// Mark the submission as first blood if applicable
+	if isFirstBlood {
+		_, err = tx.Exec(`UPDATE submissions SET first_blood = true WHERE id = $1`, submissionID)
+		if err != nil {
+			log.Println("standings mark first blood error:", err)
+			return
+		}
+	}
+
 	penalty, err := h.calculatePenalty(tx, contestID, info)
 	if err != nil {
 		log.Println("standings penalty error:", err)
 		return
 	}
 
-	_, err = tx.Exec(`INSERT INTO contest_solves (contest_id, user_id, problem_id, solved_at, penalty) VALUES ($1, $2, $3, $4, $5)`, contestID, info.UserID, info.ProblemID, info.SubmittedAt, penalty)
+	// Count total attempts for this problem by this user
+	var attemptCount int
+	err = tx.Get(&attemptCount, `SELECT COUNT(*) FROM submissions 
+		WHERE contest_id=$1 AND user_id=$2 AND problem_id=$3 AND submitted_at <= $4`,
+		contestID, info.UserID, info.ProblemID, info.SubmittedAt)
+	if err != nil {
+		log.Println("standings count attempts error:", err)
+		return
+	}
+
+	_, err = tx.Exec(`INSERT INTO contest_solves (contest_id, user_id, problem_id, solved_at, penalty, attempt_count, first_blood) VALUES ($1, $2, $3, $4, $5, $6, $7)`, contestID, info.UserID, info.ProblemID, info.SubmittedAt, penalty, attemptCount, isFirstBlood)
 	if err != nil {
 		log.Println("standings insert solve error:", err)
 		return
@@ -129,7 +131,7 @@ func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, e
 
 func (h *Handler) calculatePenalty(tx *sqlx.Tx, contestID int64, info *submissionInfo) (int, error) {
 	var wrongCount int
-	err := tx.Get(&wrongCount, `SELECT COUNT(*) FROM submissions WHERE contest_id=$1 AND user_id=$2 AND problem_id=$3 AND submitted_at < $4 AND LOWER(verdict) IN ('wrong answer','wa','wronganswer','wrong_answer','time limit exceeded','tle','runtime error','re','memory limit exceeded','mle')`, contestID, info.UserID, info.ProblemID, info.SubmittedAt)
+	err := tx.Get(&wrongCount, `SELECT COUNT(*) FROM submissions WHERE contest_id=$1 AND user_id=$2 AND problem_id=$3 AND submitted_at < $4 AND LOWER(verdict) IN ('wa','tle','re','mle')`, contestID, info.UserID, info.ProblemID, info.SubmittedAt)
 	if err != nil {
 		return 0, err
 	}

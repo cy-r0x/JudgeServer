@@ -19,3 +19,20 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Indexes
 CREATE INDEX idx_users_role ON users (role);
+
+INSERT INTO
+    users (
+        full_name,
+        username,
+        email,
+        password,
+        role
+    )
+VALUES (
+        'admin',
+        'admin',
+        'admin@example.com',
+        '$2a$12$Ncde3vjx7AbBXwyDlzgN5ue8PKgD1XexbvWdityKLbQHsHJAi1jKG',
+        'admin'
+    )
+ON CONFLICT (username) DO NOTHING;

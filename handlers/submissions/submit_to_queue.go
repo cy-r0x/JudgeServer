@@ -33,6 +33,7 @@ func (h *Handler) submitToQueue(submissionId int64, submission *UserSubmission) 
 
 	queueData := QueueSubmission{
 		SubmissionId: submissionId,
+		ProblemId:    submission.ProblemId,
 		Language:     submission.Language,
 		SourceCode:   submission.SourceCode,
 		Testcases:    testcases,

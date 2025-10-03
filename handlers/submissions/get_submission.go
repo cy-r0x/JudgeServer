@@ -19,7 +19,12 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	log.Println(userId, submissionId)
 
 	var submission Submission
-	err := h.db.Get(&submission, `SELECT * FROM submissions WHERE id=$1`, submissionId)
+	err := h.db.Get(&submission, `
+		SELECT id, user_id, username, problem_id, contest_id, language, source_code,
+		       verdict, execution_time, memory_used, submitted_at, first_blood
+		FROM submissions 
+		WHERE id=$1
+	`, submissionId)
 	if err != nil {
 		log.Println("DB Query Error:", err)
 		utils.SendResponse(w, http.StatusNotFound, "Submission not found")

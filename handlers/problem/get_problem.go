@@ -50,13 +50,12 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	case "user":
 		// Check if the user has access to this problem through their allowed contest
 		var exists bool
-		err := h.db.QueryRow(`
+		err := h.db.Get(&exists, `
 			SELECT EXISTS (
 				SELECT 1 FROM contest_problems cp
-				JOIN contests c ON cp.contest_id = c.id
-				WHERE cp.problem_id = $1 AND c.id = $2
+				WHERE cp.problem_id = $1 AND cp.contest_id = $2
 			)
-		`, problemId, payload.AllowedContest).Scan(&exists)
+		`, problemId, payload.AllowedContest)
 
 		if err != nil {
 			log.Println("Error checking problem access:", err)
@@ -74,9 +73,9 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	case "setter":
 		// Check if the problem was created by this setter
 		var createdBy int64
-		err := h.db.QueryRow(`
+		err := h.db.Get(&createdBy, `
 			SELECT created_by FROM problems WHERE id = $1
-		`, problemId).Scan(&createdBy)
+		`, problemId)
 
 		if err != nil {
 			log.Println("Error checking problem creator:", err)

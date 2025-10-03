@@ -24,7 +24,13 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var submissions []Submission
-	err := h.db.Select(&submissions, `SELECT * FROM submissions WHERE user_id=$1 AND contest_id=$2 ORDER BY submitted_at DESC`, userId, *contestId)
+	err := h.db.Select(&submissions, `
+		SELECT id, user_id, username, problem_id, contest_id, language, 
+		       verdict, execution_time, memory_used, submitted_at, first_blood
+		FROM submissions 
+		WHERE user_id=$1 AND contest_id=$2 
+		ORDER BY submitted_at DESC
+	`, userId, *contestId)
 	if err != nil {
 		log.Println("DB Query Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch submissions")

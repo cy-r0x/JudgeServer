@@ -62,7 +62,7 @@ func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 	err = tx.Get(&isFirstBlood, `SELECT NOT EXISTS (
 		SELECT 1 FROM submissions 
 		WHERE contest_id=$1 AND problem_id=$2 
-		AND LOWER(verdict) = 'ac'
+		AND verdict = 'ac'
 		AND id < $3
 	)`, contestID, info.ProblemID, submissionID)
 	if err != nil {
@@ -131,7 +131,12 @@ func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, e
 
 func (h *Handler) calculatePenalty(tx *sqlx.Tx, contestID int64, info *submissionInfo) (int, error) {
 	var wrongCount int
-	err := tx.Get(&wrongCount, `SELECT COUNT(*) FROM submissions WHERE contest_id=$1 AND user_id=$2 AND problem_id=$3 AND submitted_at < $4 AND LOWER(verdict) IN ('wa','tle','re','mle')`, contestID, info.UserID, info.ProblemID, info.SubmittedAt)
+	err := tx.Get(&wrongCount, `
+		SELECT COUNT(*) 
+		FROM submissions 
+		WHERE contest_id=$1 AND user_id=$2 AND problem_id=$3 AND submitted_at < $4 
+		AND verdict IN ('wa','tle','re','mle')
+	`, contestID, info.UserID, info.ProblemID, info.SubmittedAt)
 	if err != nil {
 		return 0, err
 	}

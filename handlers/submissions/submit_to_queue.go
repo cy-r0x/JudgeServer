@@ -1,9 +1,14 @@
 package submissions
 
-import "log"
+import (
+	"bytes"
+	"encoding/json"
+	"log"
+	"net/http"
+	"sync"
+)
 
 func (h *Handler) submitToQueue(submissionId int64, submission *UserSubmission) error {
-
 	// Fetch problem limits
 	var limits struct {
 		TimeLimit   float32 `db:"time_limit"`
@@ -34,7 +39,31 @@ func (h *Handler) submitToQueue(submissionId int64, submission *UserSubmission) 
 		Timelimit:    limits.TimeLimit,
 		MemoryLimit:  limits.MemoryLimit,
 	}
-	log.Println(queueData)
-	// TODO: Send queueData to the judging queue/engine
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		jsonData, err := json.Marshal(queueData)
+		if err != nil {
+			log.Println("Error marshaling queueData:", err)
+			return
+		}
+
+		resp, err := http.Post("http://localhost:8080/submit", "application/json", bytes.NewBuffer(jsonData))
+		if err != nil {
+			log.Println("Error posting to queue:", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Queue responded with status: %s\n", resp.Status)
+		}
+	}()
+
+	wg.Wait()
 	return nil
 }

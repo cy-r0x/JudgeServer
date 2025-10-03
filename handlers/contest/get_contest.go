@@ -55,7 +55,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 	problems := []Problem{}
 
-	if contest.Status == "RUNNING" {
+	if contest.Status != "UPCOMING" {
 		// First get the contest problems data from contest_problems table
 		// then join with problems table to get title and slug
 		problemsQuery := `

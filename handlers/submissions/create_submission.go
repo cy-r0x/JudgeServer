@@ -86,6 +86,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.submitToQueue(submissionId, &submission)
+
 	if err != nil {
 		tx.Rollback()
 		log.Println("Queue Error:", err)

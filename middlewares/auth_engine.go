@@ -13,11 +13,11 @@ import (
 )
 
 type EngineData struct {
-	SubmissionId    int64   `json:"submission_id"`
-	Verdict         string  `json:"verdict"`
-	ExecutionTime   float32 `json:"execution_time"`
-	ExecutionMemory float32 `json:"execution_memory"`
-	Timestamp       int64   `json:"timestamp"`
+	SubmissionId    int64    `json:"submission_id"`
+	Verdict         string   `json:"verdict"`
+	ExecutionTime   *float32 `json:"execution_time"`
+	ExecutionMemory *float32 `json:"execution_memory"`
+	Timestamp       int64    `json:"timestamp"`
 }
 
 type EnginePayload struct {

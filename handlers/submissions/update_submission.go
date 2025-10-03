@@ -16,9 +16,21 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(engineData)
 
+	// Handle nullable execution time and memory values
+	var executionTime interface{} = nil
+	var memoryUsed interface{} = nil
+
+	if engineData.ExecutionTime != nil {
+		executionTime = *engineData.ExecutionTime
+	}
+
+	if engineData.ExecutionMemory != nil {
+		memoryUsed = *engineData.ExecutionMemory
+	}
+
 	// Update the submission in the DB
 	query := `UPDATE submissions SET verdict=$1, execution_time=$2, memory_used=$3 WHERE id=$4`
-	_, err := h.db.Exec(query, engineData.Verdict, engineData.ExecutionTime, engineData.ExecutionMemory, engineData.SubmissionId)
+	_, err := h.db.Exec(query, engineData.Verdict, executionTime, memoryUsed, engineData.SubmissionId)
 	if err != nil {
 		log.Println("DB Update Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update submission")

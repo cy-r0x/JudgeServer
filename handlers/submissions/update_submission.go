@@ -14,11 +14,10 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
-	log.Println(engineData)
 
 	// Handle nullable execution time and memory values
-	var executionTime interface{} = nil
-	var memoryUsed interface{} = nil
+	var executionTime interface{}
+	var memoryUsed interface{}
 
 	if engineData.ExecutionTime != nil {
 		executionTime = *engineData.ExecutionTime
@@ -37,7 +36,7 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isAcceptedVerdict(engineData.Verdict) {
+	if engineData.Verdict == "ac" {
 		h.updateStandingsForAccepted(engineData.SubmissionId)
 	}
 

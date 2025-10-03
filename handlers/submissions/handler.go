@@ -51,6 +51,7 @@ type Handler struct {
 
 func NewHandler(db *sqlx.DB, config *config.Config) *Handler {
 	return &Handler{
-		db: db,
+		db:     db,
+		config: config,
 	}
 }

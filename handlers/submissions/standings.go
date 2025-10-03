@@ -8,15 +8,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+const (
+	PenaltyPerWrongSubmission = 15 // minutes penalty for each wrong submission
+)
+
 type submissionInfo struct {
 	UserID      int64         `db:"user_id"`
 	ContestID   sql.NullInt64 `db:"contest_id"`
 	ProblemID   int64         `db:"problem_id"`
 	SubmittedAt time.Time     `db:"submitted_at"`
-}
-
-func isAcceptedVerdict(v string) bool {
-	return v == "ac"
 }
 
 func (h *Handler) updateStandingsForAccepted(submissionID int64) {
@@ -151,5 +151,5 @@ func (h *Handler) calculatePenalty(tx *sqlx.Tx, contestID int64, info *submissio
 		elapsedMinutes = 0
 	}
 
-	return elapsedMinutes + wrongCount*15, nil
+	return elapsedMinutes + wrongCount*PenaltyPerWrongSubmission, nil
 }

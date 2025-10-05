@@ -1,6 +1,7 @@
 package standings
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"sort"
@@ -32,6 +33,7 @@ type UserStanding struct {
 
 type StandingsResponse struct {
 	ContestId         int64          `json:"contest_id"`
+	ContestTitle      string         `json:"contest_title"`
 	TotalProblemCount int            `json:"total_problem_count"`
 	Standings         []UserStanding `json:"standings"`
 }
@@ -78,144 +80,113 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get all users who participated (made at least one submission)
-	type User struct {
-		UserId   int64  `db:"user_id"`
-		Username string `db:"username"`
-	}
-
-	var users []User
-	err = h.db.Select(&users, `
-		SELECT DISTINCT u.id as user_id, u.username 
-		FROM users u
-		INNER JOIN submissions s ON u.id = s.user_id
-		WHERE s.contest_id = $1
-		ORDER BY u.id
-	`, contestId)
-	if err != nil {
-		log.Println("Error fetching users:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch users")
+	// Fetch contest title
+	var contestTitle string
+	if err := h.db.Get(&contestTitle, `SELECT title FROM contests WHERE id = $1`, contestId); err != nil {
+		log.Println("Error fetching contest title:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest title")
 		return
 	}
 
-	// Get all solves
-	type SolveData struct {
-		UserId       int64     `db:"user_id"`
-		ProblemId    int64     `db:"problem_id"`
-		SolvedAt     time.Time `db:"solved_at"`
-		Penalty      int       `db:"penalty"`
-		AttemptCount int       `db:"attempt_count"`
-		FirstBlood   bool      `db:"first_blood"`
+	// Aggregate per-user/problem statistics in a single query
+	type standingsRow struct {
+		UserId       int64         `db:"user_id"`
+		Username     string        `db:"username"`
+		ProblemId    int64         `db:"problem_id"`
+		ProblemIndex int           `db:"problem_index"`
+		Attempts     int           `db:"attempts"`
+		SolvedAt     sql.NullTime  `db:"solved_at"`
+		Penalty      sql.NullInt64 `db:"penalty"`
+		FirstBlood   sql.NullBool  `db:"first_blood"`
 	}
 
-	var solves []SolveData
-	err = h.db.Select(&solves, `
-		SELECT user_id, problem_id, solved_at, penalty, attempt_count, first_blood
-		FROM contest_solves
-		WHERE contest_id = $1
+	rows := []standingsRow{}
+	err = h.db.Select(&rows, `
+		WITH participants AS (
+			SELECT DISTINCT u.id AS user_id, u.username
+			FROM submissions s
+			JOIN users u ON u.id = s.user_id
+			WHERE s.contest_id = $1
+		),
+		problems AS (
+			SELECT problem_id, index
+			FROM contest_problems
+			WHERE contest_id = $1
+		)
+		SELECT
+			u.user_id,
+			u.username,
+			p.problem_id,
+			p.index AS problem_index,
+			cs.solved_at,
+			cs.penalty,
+			cs.first_blood,
+			COALESCE(SUM(CASE WHEN s.id IS NOT NULL AND (cs.solved_at IS NULL OR s.submitted_at <= cs.solved_at) THEN 1 ELSE 0 END), 0) AS attempts
+		FROM participants u
+		CROSS JOIN problems p
+		LEFT JOIN contest_solves cs
+			ON cs.contest_id = $1 AND cs.user_id = u.user_id AND cs.problem_id = p.problem_id
+		LEFT JOIN submissions s
+			ON s.contest_id = $1 AND s.user_id = u.user_id AND s.problem_id = p.problem_id
+		GROUP BY u.user_id, u.username, p.problem_id, p.index, cs.solved_at, cs.penalty, cs.first_blood
+		ORDER BY u.user_id, p.index
 	`, contestId)
 	if err != nil {
-		log.Println("Error fetching solves:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch solves")
+		log.Println("Error fetching aggregated standings:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings")
 		return
 	}
 
-	// Build a map of user -> problem -> solve data
-	userSolveMap := make(map[int64]map[int64]*SolveData)
-	for i := range solves {
-		if userSolveMap[solves[i].UserId] == nil {
-			userSolveMap[solves[i].UserId] = make(map[int64]*SolveData)
-		}
-		userSolveMap[solves[i].UserId][solves[i].ProblemId] = &solves[i]
+	userCapacity := 0
+	if len(contestProblems) > 0 {
+		userCapacity = (len(rows) + len(contestProblems) - 1) / len(contestProblems)
 	}
+	standings := make([]UserStanding, 0, userCapacity)
+	if len(rows) > 0 {
+		var current *UserStanding
+		var currentUserID int64
 
-	// Get attempt counts for all users and problems (including unsolved)
-	type AttemptData struct {
-		UserId    int64 `db:"user_id"`
-		ProblemId int64 `db:"problem_id"`
-		Attempts  int   `db:"attempts"`
-	}
+		for _, row := range rows {
+			if current == nil || row.UserId != currentUserID {
+				standings = append(standings, UserStanding{
+					UserId:   row.UserId,
+					Username: row.Username,
+					Problems: make([]ProblemStatus, 0, len(contestProblems)),
+				})
+				current = &standings[len(standings)-1]
+				currentUserID = row.UserId
+			}
 
-	var attempts []AttemptData
-	err = h.db.Select(&attempts, `
-		SELECT s.user_id, s.problem_id, COUNT(*) as attempts
-		FROM submissions s
-		LEFT JOIN contest_solves cs ON cs.contest_id = s.contest_id 
-			AND cs.user_id = s.user_id 
-			AND cs.problem_id = s.problem_id
-		WHERE s.contest_id = $1
-		AND (cs.solved_at IS NULL OR s.submitted_at <= cs.solved_at)
-		GROUP BY s.user_id, s.problem_id
-	`, contestId)
-	if err != nil {
-		log.Println("Error fetching attempts:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch attempts")
-		return
-	}
+			penalty := 0
+			if row.Penalty.Valid {
+				penalty = int(row.Penalty.Int64)
+			}
 
-	// Build a map of user -> problem -> attempt count
-	userAttemptMap := make(map[int64]map[int64]int)
-	for _, attempt := range attempts {
-		if userAttemptMap[attempt.UserId] == nil {
-			userAttemptMap[attempt.UserId] = make(map[int64]int)
-		}
-		userAttemptMap[attempt.UserId][attempt.ProblemId] = attempt.Attempts
-	}
-
-	// Build the standings
-	standings := make([]UserStanding, 0, len(users))
-
-	for _, user := range users {
-		problems := make([]ProblemStatus, 0, len(contestProblems))
-		totalPenalty := 0
-		solvedCount := 0
-		var lastSolvedAt *time.Time
-
-		for _, cp := range contestProblems {
 			problemStatus := ProblemStatus{
-				ProblemId:    cp.ProblemId,
-				ProblemIndex: cp.Index,
-				Solved:       false,
-				Attempts:     0,
-				Penalty:      0,
-				FirstBlood:   false,
+				ProblemId:    row.ProblemId,
+				ProblemIndex: row.ProblemIndex,
+				Attempts:     row.Attempts,
+				Penalty:      penalty,
+				FirstBlood:   row.FirstBlood.Valid && row.FirstBlood.Bool,
 			}
 
-			// Get attempt count
-			if userAttemptMap[user.UserId] != nil {
-				problemStatus.Attempts = userAttemptMap[user.UserId][cp.ProblemId]
-			}
+			if row.SolvedAt.Valid {
+				solvedAt := row.SolvedAt.Time
+				problemStatus.Solved = true
+				problemStatus.FirstSolvedAt = &solvedAt
+				current.TotalPenalty += penalty
 
-			// Check if solved
-			if userSolveMap[user.UserId] != nil {
-				if solveData, exists := userSolveMap[user.UserId][cp.ProblemId]; exists {
-					problemStatus.Solved = true
-					problemStatus.FirstSolvedAt = &solveData.SolvedAt
-					problemStatus.Penalty = solveData.Penalty
-					problemStatus.FirstBlood = solveData.FirstBlood
+				current.SolvedCount++
 
-					totalPenalty += solveData.Penalty
-					solvedCount++
-
-					if lastSolvedAt == nil || solveData.SolvedAt.After(*lastSolvedAt) {
-						lastSolvedAt = &solveData.SolvedAt
-					}
+				if current.LastSolvedAt == nil || solvedAt.After(*current.LastSolvedAt) {
+					last := solvedAt
+					current.LastSolvedAt = &last
 				}
 			}
 
-			problems = append(problems, problemStatus)
+			current.Problems = append(current.Problems, problemStatus)
 		}
-
-		standings = append(standings, UserStanding{
-			UserId:       user.UserId,
-			Username:     user.Username,
-			TotalPenalty: totalPenalty,
-			SolvedCount:  solvedCount,
-			Problems:     problems,
-			LastSolvedAt: lastSolvedAt,
-		})
 	}
-
 	// Sort standings: more solves -> lower penalty -> earlier last solve
 	sort.SliceStable(standings, func(i, j int) bool {
 		if standings[i].SolvedCount != standings[j].SolvedCount {
@@ -239,6 +210,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 
 	response := StandingsResponse{
 		ContestId:         contestId,
+		ContestTitle:      contestTitle,
 		TotalProblemCount: len(contestProblems),
 		Standings:         standings,
 	}

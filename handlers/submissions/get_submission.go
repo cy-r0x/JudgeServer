@@ -30,10 +30,11 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusNotFound, "Submission not found")
 		return
 	}
-
-	if submission.UserId != userId {
-		utils.SendResponse(w, http.StatusForbidden, "Not authorized to view this submission")
-		return
+	if payload.Role != "admin" {
+		if submission.UserId != userId {
+			utils.SendResponse(w, http.StatusForbidden, "Not authorized to view this submission")
+			return
+		}
 	}
 
 	utils.SendResponse(w, http.StatusOK, submission)

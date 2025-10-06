@@ -58,6 +58,43 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload.AccessToken = accessToken
+
+	// Set the JWT token cookie for authentication
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    accessToken,
+		Path:     "/",
+		HttpOnly: true, // keep it secure from JS
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false, // set to true for HTTPS in production
+		Expires:  time.Now().Add(3 * time.Hour),
+	})
+	// Will Implement Later apatoto ei thik ache -.-
+	// userInfo, _ := json.Marshal(map[string]any{
+	// 	"id":              payload.Sub,
+	// 	"username":        payload.Username,
+	// 	"full_name":       payload.FullName,
+	// 	"role":            payload.Role,
+	// 	"room_no":         payload.RoomNo,
+	// 	"pc_no":           payload.PcNo,
+	// 	"allowed_contest": payload.AllowedContest,
+	// })
+
+	// log.Println(string(userInfo))
+
+	// // Encode the JSON as base64 to make it safe for cookie values
+	// encodedUserInfo := base64.StdEncoding.EncodeToString(userInfo)
+
+	// http.SetCookie(w, &http.Cookie{
+	// 	Name:     "user",
+	// 	Value:    encodedUserInfo,
+	// 	Path:     "/",
+	// 	HttpOnly: false, // allow JS access for user info
+	// 	SameSite: http.SameSiteLaxMode,
+	// 	Secure:   false, // set to true for HTTPS in production
+	// 	Expires:  time.Now().Add(3 * time.Hour),
+	// })
+
 	// success response
 	utils.SendResponse(w, http.StatusOK, payload)
 }

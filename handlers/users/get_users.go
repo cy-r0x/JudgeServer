@@ -7,11 +7,6 @@ import (
 	"github.com/judgenot0/judge-backend/utils"
 )
 
-type UserResponse struct {
-	UserId   int64  `json:"userId" db:"id"`
-	FullName string `json:"full_name" db:"full_name"`
-	Username string `json:"username" db:"username"`
-}
 
 func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	contestId := r.PathValue("contestId")

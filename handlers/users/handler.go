@@ -43,6 +43,12 @@ type Handler struct {
 	db     *sqlx.DB
 }
 
+type UserResponse struct {
+	UserId   int64  `json:"userId" db:"id"`
+	FullName string `json:"full_name" db:"full_name"`
+	Username string `json:"username" db:"username"`
+}
+
 func NewHandler(config *config.Config, db *sqlx.DB) *Handler {
 	return &Handler{
 		config: config,

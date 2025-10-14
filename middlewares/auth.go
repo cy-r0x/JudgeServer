@@ -37,6 +37,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format")
 			return
 		}
+		
 		accessToken := headerArr[1]
 
 		payload := &Payload{}

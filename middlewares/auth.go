@@ -25,8 +25,6 @@ type Payload struct {
 
 func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// cookie := r.Cookies()
-		// log.Println(cookie)
 		header := r.Header.Get("Authorization")
 		if header == "" {
 			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required")
@@ -37,7 +35,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format")
 			return
 		}
-		
+
 		accessToken := headerArr[1]
 
 		payload := &Payload{}

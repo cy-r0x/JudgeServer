@@ -2,15 +2,12 @@ package middlewares
 
 import (
 	"net/http"
-
-	"github.com/judgenot0/judge-backend/config"
 )
 
 type Middleware func(next http.Handler) http.Handler
 type Handler func(w http.ResponseWriter, r *http.Request)
 type Manager struct {
 	globalMiddlewares []Middleware
-	config            *config.Config
 }
 
 func NewManager() *Manager {

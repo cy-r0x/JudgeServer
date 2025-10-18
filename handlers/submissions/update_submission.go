@@ -11,13 +11,14 @@ import (
 func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 	engineData, ok := r.Context().Value("engineData").(*middlewares.EngineData)
 	if !ok {
+		log.Println("kichu ekta")
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}
 
 	// Handle nullable execution time and memory values
-	var executionTime interface{}
-	var memoryUsed interface{}
+	var executionTime any
+	var memoryUsed any
 
 	if engineData.ExecutionTime != nil {
 		executionTime = *engineData.ExecutionTime

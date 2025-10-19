@@ -11,7 +11,6 @@ import (
 func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 	engineData, ok := r.Context().Value("engineData").(*middlewares.EngineData)
 	if !ok {
-		log.Println("kichu ekta")
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
 	}

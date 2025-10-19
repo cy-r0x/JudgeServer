@@ -12,6 +12,11 @@ import (
 )
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	const maxBodySize = 1024 // 1 KB
+
+	// Limit the size of the request body
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
 	var creds UserCreds
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Bad Request")
@@ -52,7 +57,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	secret := h.config.SecretKey
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	accessToken, err := token.SignedString([]byte(secret))
-	
+
 	if err != nil {
 		log.Println("error signing jwt:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Could not login")

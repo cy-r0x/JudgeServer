@@ -52,8 +52,8 @@ func (h *Handler) submitToQueue(submissionId int64, submission *UserSubmission) 
 			log.Println("Error marshaling queueData:", err)
 			return
 		}
-
-		resp, err := http.Post("http://localhost:8080/submit", "application/json", bytes.NewBuffer(jsonData))
+		url := h.config.EngineUrl + "/submit"
+		resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			log.Println("Error posting to queue:", err)
 			return

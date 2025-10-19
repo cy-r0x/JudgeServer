@@ -16,7 +16,6 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 	userId := payload.Sub
 	submissionId := r.PathValue("submissonId")
-	log.Println(userId, submissionId)
 
 	var submission Submission
 	err := h.db.Get(&submission, `

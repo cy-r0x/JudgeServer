@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/judgenot0/judge-backend/config"
+	compilerun "github.com/judgenot0/judge-backend/handlers/compile_run"
 	"github.com/judgenot0/judge-backend/handlers/contest"
 	"github.com/judgenot0/judge-backend/handlers/contest_problems"
 	"github.com/judgenot0/judge-backend/handlers/problem"
@@ -46,6 +47,7 @@ func Serve() {
 	submissionsHandler := submissions.NewHandler(dbConn, config)
 	standingsHandler := standings.NewHandler(dbConn)
 	usersHandler := users.NewHandler(config, dbConn)
+	compilerunHandler := compilerun.NewHandler(config)
 
 	//Init New Mux and Init Routes
 	mux := http.NewServeMux()
@@ -56,6 +58,7 @@ func Serve() {
 	submissionsHandler.RegisterRoutes(mux, manager, middlewares)
 	standingsHandler.RegisterRoutes(mux, manager, middlewares)
 	usersHandler.RegisterRoutes(mux, manager, middlewares)
+	compilerunHandler.RegisterRoute(mux, manager, middlewares)
 
 	//This will wrap the mux with global middlewares
 	wrapedMux := manager.WrapMux(mux)

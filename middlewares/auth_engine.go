@@ -63,7 +63,6 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 		}
 		ok := VerifyToken(enginePayload, m.config.EngineKey)
 		if !ok {
-			log.Println(err)
 			utils.SendResponse(w, http.StatusBadRequest, "Invalid Token")
 			return
 		}

@@ -22,6 +22,7 @@ type Config struct {
 	SecretKey string
 	DB        *DBConfig
 	EngineKey string
+	EngineUrl string
 }
 
 var configuration *Config
@@ -57,6 +58,13 @@ func loadConfig() (*Config, error) {
 		return nil, errors.New("ENGINE_KEY not defined")
 	}
 	config.EngineKey = engine_key
+
+	engine_url := os.Getenv("ENGINE_URL")
+	if engine_key == "" {
+		log.Fatalln("ENGINE_URL not defined")
+		return nil, errors.New("ENGINE_URL not defined")
+	}
+	config.EngineUrl = engine_url
 
 	// Configure database
 	dbConfig := &DBConfig{

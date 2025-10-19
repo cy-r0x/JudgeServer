@@ -69,43 +69,12 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem")
 		return
 	}
-
-	// Handle testcase updates if provided
-	if len(updatedProblem.Testcases) > 0 {
-		// For simplicity in this implementation, we'll delete and recreate the testcases
-		// In a production system, you might want to update existing testcases instead
-		_, err = tx.Exec(`DELETE FROM testcases WHERE problem_id = $1`, updatedProblem.Id)
-		if err != nil {
-			tx.Rollback()
-			log.Println("Error removing existing testcases:", err)
-			utils.SendResponse(w, http.StatusInternalServerError, "Failed to update testcases")
-			return
-		}
-
-		// Insert the new testcases
-		for _, testcase := range updatedProblem.Testcases {
-			_, err := tx.Exec(
-				`INSERT INTO testcases 
-				(problem_id, input, expected_output, is_sample)
-				VALUES ($1, $2, $3, $4)`,
-				updatedProblem.Id, testcase.Input, testcase.ExpectedOutput, testcase.IsSample,
-			)
-			if err != nil {
-				tx.Rollback()
-				log.Println("Error creating testcase:", err)
-				utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcases")
-				return
-			}
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		log.Println("Error committing transaction:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem")
 		return
 	}
 
-	// Return the updated problem
 	r.SetPathValue("problemId", strconv.FormatInt(updatedProblem.Id, 10))
-	h.GetProblem(w, r) // Reuse the GetProblem function to return the updated problem
+	h.GetProblem(w, r)
 }

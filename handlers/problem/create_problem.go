@@ -47,10 +47,10 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 	var problemID int64
 	err = tx.QueryRow(
 		`INSERT INTO problems 
-		(title, slug, created_by, statement, input_statement, output_statement, time_limit, memory_limit, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+		(title, slug, created_by, statement, input_statement, output_statement, time_limit, memory_limit)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 		RETURNING id`,
-		problem.Title, problem.Slug, problem.CreatedBy, problem.Statement, problem.InputStatement, problem.OutputStatement, problem.TimeLimit, problem.MemoryLimit, time.Now(),
+		problem.Title, problem.Slug, problem.CreatedBy, problem.Statement, problem.InputStatement, problem.OutputStatement, problem.TimeLimit, problem.MemoryLimit,
 	).Scan(&problemID)
 
 	if err != nil {

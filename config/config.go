@@ -60,7 +60,7 @@ func loadConfig() (*Config, error) {
 	config.EngineKey = engine_key
 
 	engine_url := os.Getenv("ENGINE_URL")
-	if engine_key == "" {
+	if engine_url == "" {
 		log.Fatalln("ENGINE_URL not defined")
 		return nil, errors.New("ENGINE_URL not defined")
 	}

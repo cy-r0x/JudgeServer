@@ -11,7 +11,11 @@ import (
 )
 
 func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
+	const maxBodySize = 50 * 1024
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
 	decoder := json.NewDecoder(r.Body)
+
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")

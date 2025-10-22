@@ -6,20 +6,21 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/judgenot0/judge-backend/handlers/structs"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user User
+	var user structs.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	// basic validation
-	if user.Username == "" || user.Email == "" || user.Password == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "username, email and password are required")
+	if user.Username == "" || user.Password == "" {
+		utils.SendResponse(w, http.StatusBadRequest, "username and password are required")
 		return
 	}
 
@@ -40,14 +41,12 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	// insert into DB
 	query := `
-		INSERT INTO users (full_name, username, email, password, role, allowed_contest, created_at)
-		VALUES (:full_name,:username, :email, :password, :role, :allowed_contest, :created_at)
-		RETURNING id;
+		INSERT INTO users (full_name, username, password, clan, room_no, pc_no, role, allowed_contest, created_at)
+		VALUES (:full_name,:username, :password, :clan, :room_no, :pc_no, :role, :allowed_contest, :created_at);
 	`
 
 	rows, err := h.db.NamedQuery(query, user)
 	if err != nil {
-		log.Println(err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
@@ -55,7 +54,6 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if rows.Next() {
 		if err := rows.Scan(&user.Id); err != nil {
-			log.Println(err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 			return
 		}

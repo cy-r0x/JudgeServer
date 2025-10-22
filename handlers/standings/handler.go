@@ -19,6 +19,8 @@ type ProblemStatus struct {
 type UserStanding struct {
 	UserId       int64           `json:"user_id"`
 	Username     string          `json:"username"`
+	FullName     string          `json:"full_name"`
+	Clan         *string         `json:"clan"`
 	TotalPenalty int             `json:"total_penalty"`
 	SolvedCount  int             `json:"solved_count"`
 	Problems     []ProblemStatus `json:"problems"`

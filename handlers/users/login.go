@@ -2,9 +2,12 @@ package users
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/judgenot0/judge-backend/handlers/structs"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/judgenot0/judge-backend/utils"
@@ -24,13 +27,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// fetch user from DB
-	var dbUser User
-	query := `SELECT id, full_name, username, password, role, room_no, pc_no, allowed_contest FROM users WHERE username=$1 LIMIT 1`
+	var dbUser structs.User
+	query := `SELECT id, full_name, username, password, role, clan, room_no, pc_no, allowed_contest FROM users WHERE username=$1 LIMIT 1`
 	err := h.db.Get(&dbUser, query, creds.Username)
 	if err != nil {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
+
+	fmt.Println(dbUser.Password)
+	tmpHash, _ := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
+	fmt.Println(string(tmpHash))
 
 	// compare hashed password
 	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(creds.Password)); err != nil {
@@ -43,6 +50,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Sub:            dbUser.Id,
 		FullName:       dbUser.FullName,
 		Username:       dbUser.Username,
+		Clan:           dbUser.Clan,
 		Role:           dbUser.Role,
 		RoomNo:         dbUser.RoomNo,
 		PcNo:           dbUser.PcNo,

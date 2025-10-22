@@ -54,6 +54,8 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	type standingsRow struct {
 		UserId       int64         `db:"user_id"`
 		Username     string        `db:"username"`
+		FullName     string        `db:"full_name"`
+		Clan         *string       `db:"clan"`
 		ProblemId    int64         `db:"problem_id"`
 		ProblemIndex int           `db:"problem_index"`
 		Attempts     int           `db:"attempts"`
@@ -65,7 +67,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	rows := []standingsRow{}
 	err = h.db.Select(&rows, `
 		WITH participants AS (
-			SELECT DISTINCT u.id AS user_id, u.username
+			SELECT DISTINCT u.id AS user_id, u.username, u.full_name, u.clan
 			FROM submissions s
 			JOIN users u ON u.id = s.user_id
 			WHERE s.contest_id = $1
@@ -78,6 +80,8 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			u.user_id,
 			u.username,
+			u.full_name,
+			u.clan,
 			p.problem_id,
 			p.index AS problem_index,
 			cs.solved_at,
@@ -90,7 +94,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 			ON cs.contest_id = $1 AND cs.user_id = u.user_id AND cs.problem_id = p.problem_id
 		LEFT JOIN submissions s
 			ON s.contest_id = $1 AND s.user_id = u.user_id AND s.problem_id = p.problem_id
-		GROUP BY u.user_id, u.username, p.problem_id, p.index, cs.solved_at, cs.penalty, cs.first_blood
+		GROUP BY u.user_id, u.username, u.full_name, u.clan, p.problem_id, p.index, cs.solved_at, cs.penalty, cs.first_blood
 		ORDER BY u.user_id, p.index
 	`, contestId)
 	if err != nil {
@@ -113,6 +117,8 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 				standings = append(standings, UserStanding{
 					UserId:   row.UserId,
 					Username: row.Username,
+					FullName: row.FullName,
+					Clan:     row.Clan,
 					Problems: make([]ProblemStatus, 0, len(contestProblems)),
 				})
 				current = &standings[len(standings)-1]

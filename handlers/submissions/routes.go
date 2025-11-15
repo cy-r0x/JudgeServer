@@ -11,5 +11,5 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manage
 	mux.Handle("POST /api/submissions", manager.With(h.CreateSubmission, middlewares.Authenticate))
 	mux.Handle("PUT /api/submissions", manager.With(h.UpdateSubmission, middlewares.AuthEngine))
 	mux.Handle("GET /api/submissions/{submissonId}", manager.With(h.GetSubmission, middlewares.Authenticate))
-	mux.Handle("GET /api/submissions/all/{contestId}", manager.With(h.ListAllSubmissions, middlewares.Authenticate))
+	mux.Handle("GET /api/submissions/all/{contestId}", manager.With(h.ListAllSubmissions, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 }

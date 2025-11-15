@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/judgenot0/judge-backend/config"
+	"github.com/judgenot0/judge-backend/handlers/cluster"
 	compilerun "github.com/judgenot0/judge-backend/handlers/compile_run"
 	"github.com/judgenot0/judge-backend/handlers/contest"
 	"github.com/judgenot0/judge-backend/handlers/contest_problems"
@@ -40,6 +41,7 @@ func Serve() {
 
 	manager.Use(middlewares.Cors, middlewares.Prefilght, middlewares.Logger)
 
+	cluserHandler := cluster.NewHandler()
 	contestHandler := contest.NewHandler(dbConn)
 	contestProblemHandler := contest_problems.NewHandler(dbConn)
 	problemHandler := problem.NewHandler(dbConn)
@@ -51,6 +53,7 @@ func Serve() {
 
 	//Init New Mux and Init Routes
 	mux := http.NewServeMux()
+	cluserHandler.RegisterRoutes(mux, manager, middlewares)
 	contestHandler.RegisterRoutes(mux, manager, middlewares)
 	contestProblemHandler.RegisterRoute(mux, manager, middlewares)
 	problemHandler.RegisterRoutes(mux, manager, middlewares)

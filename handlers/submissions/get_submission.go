@@ -20,7 +20,7 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	var submission Submission
 	err := h.db.Get(&submission, `
 		SELECT id, user_id, username, problem_id, contest_id, language, source_code,
-		       verdict, execution_time, memory_used, submitted_at, first_blood
+		       verdict, execution_time, memory_used, submitted_at
 		FROM submissions 
 		WHERE id=$1
 	`, submissionId)

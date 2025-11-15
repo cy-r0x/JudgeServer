@@ -11,10 +11,10 @@ type Submission struct {
 	Id            int64     `json:"id" db:"id"`
 	UserId        int64     `json:"user_id,omitempty" db:"user_id"`
 	Username      string    `json:"username" db:"username"`
-	Clan          string    `json:"clan,omitempty" db:"clan"`
+	Clan          *string   `json:"clan,omitempty" db:"clan"`
 	FullName      string    `json:"full_name,omitempty" db:"full_name"`
-	RoomNo        string    `json:"room_no,omitempty" db:"room_no"`
-	PcNo          string    `json:"pc_no,omitempty" db:"pc_no"`
+	RoomNo        *string   `json:"room_no,omitempty" db:"room_no"`
+	PcNo          *string   `json:"pc_no,omitempty" db:"pc_no"`
 	ProblemId     int64     `json:"problem_id" db:"problem_id"`
 	ContestId     int64     `json:"contest_id,omitempty" db:"contest_id"`
 	Language      string    `json:"language" db:"language"`

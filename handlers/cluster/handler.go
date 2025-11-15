@@ -6,11 +6,13 @@ type Node struct {
 }
 
 type Handler struct {
-	nodes []Node
+	nodes          []Node
+	availableNodes map[string]string
 }
 
 func NewHandler() *Handler {
 	return &Handler{
-		nodes: []Node{},
+		nodes:          []Node{},
+		availableNodes: make(map[string]string),
 	}
 }

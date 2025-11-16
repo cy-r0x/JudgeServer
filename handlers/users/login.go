@@ -2,7 +2,6 @@ package users
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -34,11 +33,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
-
-	fmt.Println(dbUser.Password)
-	tmpHash, _ := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
-	fmt.Println(string(tmpHash))
-
 	// compare hashed password
 	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(creds.Password)); err != nil {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")

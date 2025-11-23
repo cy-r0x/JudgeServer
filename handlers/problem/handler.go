@@ -16,17 +16,20 @@ type Testcase struct {
 }
 
 type Problem struct {
-	Id              int64      `json:"id" db:"id"`
-	Title           string     `json:"title" db:"title"`
-	Slug            string     `json:"slug" db:"slug"`
-	Statement       string     `json:"statement" db:"statement"`
-	InputStatement  string     `json:"input_statement" db:"input_statement"`
-	OutputStatement string     `json:"output_statement" db:"output_statement"`
-	TimeLimit       float32    `json:"time_limit" db:"time_limit"`
-	MemoryLimit     float32    `json:"memory_limit" db:"memory_limit"`
-	Testcases       []Testcase `json:"test_cases"`
-	CreatedBy       int64      `json:"created_by" db:"created_by"`
-	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
+	Id                 int64      `json:"id" db:"id"`
+	Title              string     `json:"title" db:"title"`
+	Slug               string     `json:"slug" db:"slug"`
+	Statement          string     `json:"statement" db:"statement"`
+	InputStatement     string     `json:"input_statement" db:"input_statement"`
+	OutputStatement    string     `json:"output_statement" db:"output_statement"`
+	TimeLimit          float32    `json:"time_limit" db:"time_limit"`
+	MemoryLimit        float32    `json:"memory_limit" db:"memory_limit"`
+	Testcases          []Testcase `json:"test_cases"`
+	CheckerType        string     `json:"checker_type" db:"checker_type"`
+	CheckerStrictSpace bool       `json:"checker_strict_space" db:"checker_strict_space"`
+	CheckerPrecision   *float32   `json:"checker_precision" db:"checker_precision"`
+	CreatedBy          int64      `json:"created_by" db:"created_by"`
+	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
 }
 
 type Handler struct {

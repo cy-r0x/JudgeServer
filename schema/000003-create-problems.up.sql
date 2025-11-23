@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS problems (
     output_statement TEXT NOT NULL,
     time_limit FLOAT NOT NULL,
     memory_limit FLOAT NOT NULL,
+    checker_type VARCHAR(10) NOT NULL,
+    checker_strict_space BOOLEAN NOT NULL,
+    checker_precision VARCHAR(10),
     created_by BIGINT REFERENCES users (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

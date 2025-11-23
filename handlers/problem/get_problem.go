@@ -98,9 +98,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch problem details
 	err := h.db.Get(&problem, `
-		SELECT id, title, slug, statement, input_statement as input_statement, 
-		output_statement, time_limit, memory_limit, created_by, created_at
-		FROM problems WHERE id = $1
+		SELECT * FROM problems WHERE id = $1
 	`, problemId)
 
 	if err != nil {

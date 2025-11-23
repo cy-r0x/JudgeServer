@@ -32,6 +32,9 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 	problem.OutputStatement = ""
 	problem.TimeLimit = 1
 	problem.MemoryLimit = 256
+	problem.CheckerStrictSpace = false
+	problem.CheckerType = "string"
+	problem.CheckerPrecision = nil
 	problem.CreatedBy = payload.Sub
 	problem.Slug = strings.ReplaceAll(strings.ToLower(problem.Title), " ", "-")
 	problem.CreatedAt = time.Now()
@@ -47,10 +50,10 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 	var problemID int64
 	err = tx.QueryRow(
 		`INSERT INTO problems 
-		(title, slug, created_by, statement, input_statement, output_statement, time_limit, memory_limit)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+		(title, slug, created_by, statement, input_statement, output_statement, time_limit, memory_limit, checker_type, checker_strict_space, checker_precision)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
 		RETURNING id`,
-		problem.Title, problem.Slug, problem.CreatedBy, problem.Statement, problem.InputStatement, problem.OutputStatement, problem.TimeLimit, problem.MemoryLimit,
+		problem.Title, problem.Slug, problem.CreatedBy, problem.Statement, problem.InputStatement, problem.OutputStatement, problem.TimeLimit, problem.MemoryLimit, problem.CheckerType, problem.CheckerStrictSpace, problem.CheckerPrecision,
 	).Scan(&problemID)
 
 	if err != nil {

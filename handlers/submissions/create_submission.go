@@ -74,6 +74,26 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var problem Problem
+	if err := h.db.Get(&problem, `SELECT p.time_limit, p.memory_limit, p.checker_type, p.checker_strict_space, p.checker_precision FROM problems p WHERE id=$1`, submission.ProblemId); err != nil {
+		log.Println("Failed to fetch problem details:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
+		return
+	}
+
+	var testcases []Testcase
+	if err := h.db.Select(&testcases, `
+		SELECT input, expected_output
+		FROM testcases
+		WHERE problem_id=$1
+	`, submission.ProblemId); err != nil {
+		log.Println("Failed to fetch testcases:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
+		return
+	}
+
+	problem.Testcases = testcases
+
 	// Check if problem is assigned to the contest
 	var problemInContest bool
 	if err := h.db.Get(&problemInContest, `SELECT EXISTS(SELECT 1 FROM contest_problems WHERE contest_id=$1 AND problem_id=$2)`, submission.ContestId, submission.ProblemId); err != nil {
@@ -95,8 +115,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	query := `INSERT INTO submissions (user_id, username, problem_id, contest_id, language, source_code) 
 	          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
-	var submissionId int64
-	err = tx.QueryRow(query, userId, username, submission.ProblemId, submission.ContestId, submission.Language, submission.SourceCode).Scan(&submissionId)
+	err = tx.QueryRow(query, userId, username, submission.ProblemId, submission.ContestId, submission.Language, submission.SourceCode).Scan(&problem.SubmissionId)
 	if err != nil {
 		tx.Rollback()
 		log.Println("DB Insert Error:", err)
@@ -104,7 +123,10 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.submitToQueue(submissionId, &submission)
+	problem.SourceCode = submission.SourceCode
+	problem.Language = submission.Language
+
+	err = h.submitToQueue(&problem)
 
 	if err != nil {
 		tx.Rollback()
@@ -119,5 +141,5 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendResponse(w, http.StatusOK, map[string]any{"submission_id": submissionId})
+	utils.SendResponse(w, http.StatusOK, map[string]any{"submission_id": problem.SubmissionId})
 }

@@ -51,8 +51,8 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(`
 		UPDATE problems 
 		SET title = $1, statement = $2, input_statement = $3, output_statement = $4,
-		    time_limit = $5, memory_limit = $6, slug = $7
-		WHERE id = $8
+		    time_limit = $5, memory_limit = $6, checker_type = $7, checker_strict_space = $8, checker_precision = $9, slug = $10
+		WHERE id = $11
 	`,
 		updatedProblem.Title,
 		updatedProblem.Statement,
@@ -60,6 +60,9 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		updatedProblem.OutputStatement,
 		updatedProblem.TimeLimit,
 		updatedProblem.MemoryLimit,
+		updatedProblem.CheckerType,
+		updatedProblem.CheckerStrictSpace,
+		updatedProblem.CheckerPrecision,
 		strings.ReplaceAll(strings.ToLower(updatedProblem.Title), " ", "-"),
 		updatedProblem.Id)
 

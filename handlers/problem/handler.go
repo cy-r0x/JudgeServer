@@ -27,7 +27,7 @@ type Problem struct {
 	Testcases          []Testcase `json:"test_cases"`
 	CheckerType        string     `json:"checker_type" db:"checker_type"`
 	CheckerStrictSpace bool       `json:"checker_strict_space" db:"checker_strict_space"`
-	CheckerPrecision   *float32   `json:"checker_precision" db:"checker_precision"`
+	CheckerPrecision   *string    `json:"checker_precision" db:"checker_precision"`
 	CreatedBy          int64      `json:"created_by" db:"created_by"`
 	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
 }

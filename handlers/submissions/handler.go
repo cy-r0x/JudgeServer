@@ -46,7 +46,7 @@ type Problem struct {
 	Testcases          []Testcase `json:"testcases"`
 	CheckerType        string     `json:"checker_type" db:"checker_type"`
 	CheckerStrictSpace bool       `json:"checker_strict_space" db:"checker_strict_space"`
-	CheckerPrecision   *float32   `json:"checker_precision" db:"checker_precision"`
+	CheckerPrecision   *string    `json:"checker_precision" db:"checker_precision"`
 }
 
 type Handler struct {

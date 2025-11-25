@@ -16,6 +16,8 @@ func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	contest.StartTime = contest.StartTime.UTC()
+
 	query := `UPDATE contests 
 			 SET title = $1, description = $2, start_time = $3, duration_seconds = $4
 			 WHERE id = $5 RETURNING created_at`

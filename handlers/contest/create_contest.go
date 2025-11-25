@@ -16,10 +16,12 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Convert start time to UTC
+	contest.StartTime = contest.StartTime.UTC()
+
 	// Insert Contest into DB
 	query := `INSERT INTO contests (title, description, start_time, duration_seconds) 
 			 VALUES ($1, $2, $3, $4) RETURNING id, created_at`
-
 	err = h.db.QueryRow(query,
 		contest.Title,
 		contest.Description,

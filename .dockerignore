@@ -1,0 +1,49 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+judgeserver
+
+# Test files
+*_test.go
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# Environment files
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Generated files
+generated_csv/*.csv
+
+# Documentation
+*.md
+README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml

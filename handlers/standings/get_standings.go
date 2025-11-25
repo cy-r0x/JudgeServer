@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/judgenot0/judge-backend/utils"
 )
@@ -176,11 +177,24 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
+	var data struct {
+		StartTime time.Time `db:"start_time"`
+		Duration  int64     `db:"duration_seconds"`
+	}
+	err = h.db.Get(&data, `SELECT start_time, duration_seconds FROM contests WHERE id = $1`, contestId)
+	if err != nil {
+		log.Println("Error fetching contest data:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest data")
+		return
+	}
+
 	response := StandingsResponse{
 		ContestId:         contestId,
 		ContestTitle:      contestTitle,
 		TotalProblemCount: len(contestProblems),
 		Standings:         standings,
+		StartTime:         data.StartTime,
+		DurationSeconds:   data.Duration,
 	}
 
 	utils.SendResponse(w, http.StatusOK, response)

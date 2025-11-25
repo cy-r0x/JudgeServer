@@ -28,6 +28,8 @@ type Problem struct {
 	CheckerType        string     `json:"checker_type" db:"checker_type"`
 	CheckerStrictSpace bool       `json:"checker_strict_space" db:"checker_strict_space"`
 	CheckerPrecision   *string    `json:"checker_precision" db:"checker_precision"`
+	StartTime          *time.Time `json:"start_time,omitempty" db:"start_time"`
+	DurationSeconds    *int64     `json:"duration_seconds,omitempty" db:"duration_seconds"`
 	CreatedBy          int64      `json:"created_by" db:"created_by"`
 	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
 }

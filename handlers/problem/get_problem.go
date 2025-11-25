@@ -95,16 +95,24 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusForbidden, "Invalid role")
 		return
 	}
-
-	// Fetch problem details
-	err := h.db.Get(&problem, `
+	if payload.Role == "user" {
+		err := h.db.Get(&problem, `
+		SELECT p.*, c.start_time, c.duration_seconds FROM problems p INNER JOIN contest_problems cp ON p.id = cp.problem_id INNER JOIN contests c ON cp.contest_id = c.id WHERE p.id = $1
+	`, problemId)
+		if err != nil {
+			log.Println("Error fetching problem:", err)
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
+			return
+		}
+	} else {
+		err := h.db.Get(&problem, `
 		SELECT * FROM problems WHERE id = $1
 	`, problemId)
-
-	if err != nil {
-		log.Println("Error fetching problem:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
-		return
+		if err != nil {
+			log.Println("Error fetching problem:", err)
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
+			return
+		}
 	}
 
 	// Fetch testcases

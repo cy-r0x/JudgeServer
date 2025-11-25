@@ -32,6 +32,8 @@ type StandingsResponse struct {
 	ContestTitle      string         `json:"contest_title"`
 	TotalProblemCount int            `json:"total_problem_count"`
 	Standings         []UserStanding `json:"standings"`
+	StartTime         time.Time      `json:"start_time"`
+	DurationSeconds   int64          `json:"duration_seconds"`
 }
 
 type Handler struct {

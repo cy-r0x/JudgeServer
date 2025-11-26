@@ -188,6 +188,39 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Calculate problem statistics (solved and attempted counts per problem index)
+	type problemStats struct {
+		Solved    int `db:"solved"`
+		Attempted int `db:"attempted"`
+		Index     int `db:"index"`
+	}
+
+	var stats []problemStats
+	err = h.db.Select(&stats, `
+		SELECT 
+			cp.index,
+			COUNT(DISTINCT CASE WHEN LOWER(s.verdict) = 'ac' THEN s.user_id END) as solved,
+			COUNT(DISTINCT s.user_id) as attempted
+		FROM contest_problems cp
+		LEFT JOIN submissions s ON s.problem_id = cp.problem_id AND s.contest_id = cp.contest_id
+		WHERE cp.contest_id = $1
+		GROUP BY cp.index
+		ORDER BY cp.index
+	`, contestId)
+	if err != nil {
+		log.Println("Error fetching problem statistics:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem statistics")
+		return
+	}
+
+	report := make(map[int]ProblemReport)
+	for _, stat := range stats {
+		report[stat.Index] = ProblemReport{
+			Solved:    stat.Solved,
+			Attempted: stat.Attempted,
+		}
+	}
+
 	response := StandingsResponse{
 		ContestId:         contestId,
 		ContestTitle:      contestTitle,
@@ -195,6 +228,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		Standings:         standings,
 		StartTime:         data.StartTime,
 		DurationSeconds:   data.Duration,
+		Report:            report,
 	}
 
 	utils.SendResponse(w, http.StatusOK, response)

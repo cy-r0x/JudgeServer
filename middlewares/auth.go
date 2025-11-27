@@ -24,6 +24,24 @@ type Payload struct {
 	jwt.RegisteredClaims
 }
 
+func DecodeToken(tokenStr string, secretKey string) (*Payload, error) {
+	payload := &Payload{}
+	token, err := jwt.ParseWithClaims(tokenStr, payload, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(secretKey), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+	return payload, nil
+}
+
 func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
@@ -39,22 +57,10 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 
 		accessToken := headerArr[1]
 
-		payload := &Payload{}
-
-		token, err := jwt.ParseWithClaims(accessToken, payload, func(t *jwt.Token) (any, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-			}
-			return []byte(m.config.SecretKey), nil
-		})
+		payload, err := DecodeToken(accessToken, m.config.SecretKey)
 
 		if err != nil {
 			log.Println(err)
-			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
-			return
-		}
-
-		if !token.Valid {
 			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 			return
 		}

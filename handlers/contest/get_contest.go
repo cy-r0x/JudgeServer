@@ -1,8 +1,10 @@
 package contest
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -10,12 +12,20 @@ import (
 )
 
 func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
-	payload, ok := r.Context().Value("user").(*middlewares.Payload)
-	if !ok {
-		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
-		return
+	var userId *int64
+	header := r.Header.Get("Authorization")
+
+	if header != "" {
+		headerArr := strings.Split(header, " ")
+		if len(headerArr) == 2 {
+			accessToken := headerArr[1]
+			payload, err := middlewares.DecodeToken(accessToken, h.config.SecretKey)
+			if err == nil {
+				userId = &payload.Sub
+			}
+		}
 	}
-	userId := payload.Sub
+
 	contestId := r.PathValue("contestId")
 	if contestId == "" {
 		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found")
@@ -67,26 +77,50 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	problems := []Problem{}
 
 	if contest.Status != "UPCOMING" {
-		// First get the contest problems data from contest_problems table
-		// then join with problems table to get title and slug
-		problemsQuery := `
-		SELECT 
-			cp.problem_id, 
-			p.title, 
-			p.slug, 
-			cp.index,
-			COALESCE(BOOL_OR(s.user_id = $2 AND LOWER(s.verdict) = 'ac'), false) as solved,
-			COALESCE(BOOL_OR(s.user_id = $2), false) as attempted,
-			COUNT(DISTINCT CASE WHEN LOWER(s.verdict) = 'ac' THEN s.user_id ELSE NULL END) as total_solvers
-		FROM contest_problems cp
-		JOIN problems p ON cp.problem_id = p.id
-		LEFT JOIN submissions s ON s.problem_id = cp.problem_id AND s.contest_id = cp.contest_id
-		WHERE cp.contest_id = $1
-		GROUP BY cp.problem_id, p.title, p.slug, cp.index
-		ORDER BY cp.index
-	`
+		var problemsQuery string
+		var rows *sql.Rows
+		var err error
 
-		rows, err := h.db.Query(problemsQuery, contestId, userId)
+		if userId != nil {
+			// Authenticated user: include solved/attempted status
+			problemsQuery = `
+			SELECT 
+				cp.problem_id, 
+				p.title, 
+				p.slug, 
+				cp.index,
+				COALESCE(BOOL_OR(s.user_id = $2 AND LOWER(s.verdict) = 'ac'), false) as solved,
+				COALESCE(BOOL_OR(s.user_id = $2), false) as attempted,
+				COUNT(DISTINCT CASE WHEN LOWER(s.verdict) = 'ac' THEN s.user_id ELSE NULL END) as total_solvers
+			FROM contest_problems cp
+			JOIN problems p ON cp.problem_id = p.id
+			LEFT JOIN submissions s ON s.problem_id = cp.problem_id AND s.contest_id = cp.contest_id
+			WHERE cp.contest_id = $1
+			GROUP BY cp.problem_id, p.title, p.slug, cp.index
+			ORDER BY cp.index
+			`
+			rows, err = h.db.Query(problemsQuery, contestId, *userId)
+		} else {
+			// Unauthenticated: only public data
+			problemsQuery = `
+			SELECT 
+				cp.problem_id, 
+				p.title, 
+				p.slug, 
+				cp.index,
+				false as solved,
+				false as attempted,
+				COUNT(DISTINCT CASE WHEN LOWER(s.verdict) = 'ac' THEN s.user_id ELSE NULL END) as total_solvers
+			FROM contest_problems cp
+			JOIN problems p ON cp.problem_id = p.id
+			LEFT JOIN submissions s ON s.problem_id = cp.problem_id AND s.contest_id = cp.contest_id
+			WHERE cp.contest_id = $1
+			GROUP BY cp.problem_id, p.title, p.slug, cp.index
+			ORDER BY cp.index
+			`
+			rows, err = h.db.Query(problemsQuery, contestId)
+		}
+
 		if err != nil {
 			log.Println("Error fetching contest problems:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems")

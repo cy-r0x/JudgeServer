@@ -42,7 +42,7 @@ func Serve() {
 	manager.Use(middlewares.Cors, middlewares.Prefilght, middlewares.Logger)
 
 	cluserHandler := cluster.NewHandler()
-	contestHandler := contest.NewHandler(dbConn)
+	contestHandler := contest.NewHandler(dbConn, config)
 	contestProblemHandler := contest_problems.NewHandler(dbConn)
 	problemHandler := problem.NewHandler(dbConn)
 	setterHandler := setter.NewHandler(dbConn)

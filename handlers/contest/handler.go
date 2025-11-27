@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/judgenot0/judge-backend/config"
 )
 
 type Contest struct {
@@ -23,11 +24,13 @@ type ContestProblem struct {
 }
 
 type Handler struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	config *config.Config
 }
 
-func NewHandler(db *sqlx.DB) *Handler {
+func NewHandler(db *sqlx.DB, config *config.Config) *Handler {
 	return &Handler{
-		db: db,
+		db:     db,
+		config: config,
 	}
 }

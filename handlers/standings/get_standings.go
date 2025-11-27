@@ -13,7 +13,7 @@ import (
 
 func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 
-	const limit = 10
+	const limit = 100
 	page := r.URL.Query().Get("page")
 	if page == "" {
 		page = "1"
@@ -94,27 +94,41 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type userStandingRow struct {
-		UserId       int64   `db:"user_id"`
-		Username     string  `db:"username"`
-		FullName     string  `db:"full_name"`
-		Clan         *string `db:"clan"`
-		SolvedCount  int     `db:"solved_count"`
-		TotalPenalty int     `db:"penalty"`
+		UserId       int64         `db:"user_id"`
+		Username     string        `db:"username"`
+		FullName     string        `db:"full_name"`
+		Clan         *string       `db:"clan"`
+		SolvedCount  sql.NullInt64 `db:"solved_count"`
+		TotalPenalty sql.NullInt64 `db:"penalty"`
 	}
 
 	var userStandings []userStandingRow
 	err = h.db.Select(&userStandings, `
+		WITH wrong_counts AS (
+			SELECT 
+				user_id,
+				COUNT(*) as wrong_count
+			FROM submissions
+			WHERE contest_id = $1 
+			AND LOWER(verdict) IN ('wa','tle','re','mle')
+			GROUP BY user_id
+		)
 		SELECT 
-			cs.user_id,
+			u.id AS user_id,
 			u.username,
 			u.full_name,
 			u.clan,
 			cs.solved_count,
-			cs.penalty
-		FROM contest_standings cs
-		JOIN users u ON u.id = cs.user_id
-		WHERE cs.contest_id = $1
-		ORDER BY cs.solved_count DESC, cs.penalty ASC
+			COALESCE(cs.penalty, COALESCE(wc.wrong_count, 0)) AS penalty
+		FROM (
+			SELECT DISTINCT user_id 
+			FROM submissions 
+			WHERE contest_id = $1
+		) participants
+		JOIN users u ON u.id = participants.user_id
+		LEFT JOIN contest_standings cs ON cs.contest_id = $1 AND cs.user_id = participants.user_id
+		LEFT JOIN wrong_counts wc ON wc.user_id = participants.user_id
+		ORDER BY COALESCE(cs.solved_count, 0) DESC, COALESCE(cs.penalty, COALESCE(wc.wrong_count, 0)) ASC, u.id ASC
 	`, contestId)
 	if err != nil {
 		log.Println("Error fetching user standings:", err)
@@ -186,13 +200,22 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 
 	standings := make([]UserStanding, 0, len(userStandings))
 	for _, us := range userStandings {
+		solvedCount := 0
+		totalPenalty := 0
+		if us.SolvedCount.Valid {
+			solvedCount = int(us.SolvedCount.Int64)
+		}
+		if us.TotalPenalty.Valid {
+			totalPenalty = int(us.TotalPenalty.Int64)
+		}
+
 		userStanding := UserStanding{
 			UserId:       us.UserId,
 			Username:     us.Username,
 			FullName:     us.FullName,
 			Clan:         us.Clan,
-			SolvedCount:  us.SolvedCount,
-			TotalPenalty: us.TotalPenalty,
+			SolvedCount:  solvedCount,
+			TotalPenalty: totalPenalty,
 			Problems:     make([]ProblemStatus, 0, len(contestProblems)),
 		}
 

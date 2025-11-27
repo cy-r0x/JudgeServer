@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/judgenot0/judge-backend/config"
 	"github.com/judgenot0/judge-backend/handlers/cluster"
@@ -46,8 +47,8 @@ func Serve() {
 	contestProblemHandler := contest_problems.NewHandler(dbConn)
 	problemHandler := problem.NewHandler(dbConn)
 	setterHandler := setter.NewHandler(dbConn)
-	submissionsHandler := submissions.NewHandler(dbConn, config)
 	standingsHandler := standings.NewHandler(dbConn)
+	submissionsHandler := submissions.NewHandler(dbConn, config)
 	usersHandler := users.NewHandler(config, dbConn)
 	compilerunHandler := compilerun.NewHandler(config)
 
@@ -62,6 +63,13 @@ func Serve() {
 	standingsHandler.RegisterRoutes(mux, manager, middlewares)
 	usersHandler.RegisterRoutes(mux, manager, middlewares)
 	compilerunHandler.RegisterRoute(mux, manager, middlewares)
+
+	go func() {
+		for {
+			standingsHandler.MemoryEviction()
+			time.Sleep(1 * time.Hour)
+		}
+	}()
 
 	//This will wrap the mux with global middlewares
 	wrapedMux := manager.WrapMux(mux)

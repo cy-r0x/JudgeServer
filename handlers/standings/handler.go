@@ -1,6 +1,7 @@
 package standings
 
 import (
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -43,11 +44,20 @@ type StandingsResponse struct {
 }
 
 type Handler struct {
-	db *sqlx.DB
+	db             *sqlx.DB
+	mu             sync.RWMutex
+	Last_standings map[int64]struct {
+		timestamp *time.Time
+		standings *StandingsResponse
+	}
 }
 
 func NewHandler(db *sqlx.DB) *Handler {
 	return &Handler{
 		db: db,
+		Last_standings: make(map[int64]struct {
+			timestamp *time.Time
+			standings *StandingsResponse
+		}),
 	}
 }

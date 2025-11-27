@@ -2,9 +2,9 @@ package standings
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
-	"sort"
 	"strconv"
 	"time"
 
@@ -12,6 +12,22 @@ import (
 )
 
 func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
+
+	const limit = 10
+	page := r.URL.Query().Get("page")
+	if page == "" {
+		page = "1"
+	}
+
+	crrPage, err := strconv.Atoi(page)
+	if err != nil {
+		log.Println(err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	offset := (crrPage - 1) * limit
+
 	contestIdStr := r.PathValue("contestId")
 	if contestIdStr == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
@@ -22,6 +38,32 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
 		return
+	}
+
+	currentTime := time.Now()
+
+	h.mu.RLock()
+	entry, exists := h.Last_standings[contestId]
+	h.mu.RUnlock()
+
+	if exists && entry.timestamp != nil {
+		if currentTime.Sub(*entry.timestamp) < 15*time.Second {
+			response := *entry.standings
+			totalStandings := len(response.Standings)
+
+			start := offset
+			end := offset + limit
+			if start >= totalStandings {
+				response.Standings = []UserStanding{}
+			} else {
+				if end > totalStandings {
+					end = totalStandings
+				}
+				response.Standings = response.Standings[start:end]
+			}
+			utils.SendResponse(w, http.StatusOK, response)
+			return
+		}
 	}
 
 	// Get all problems in the contest
@@ -51,131 +93,151 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aggregate per-user/problem statistics in a single query
-	type standingsRow struct {
-		UserId       int64         `db:"user_id"`
-		Username     string        `db:"username"`
-		FullName     string        `db:"full_name"`
-		Clan         *string       `db:"clan"`
-		ProblemId    int64         `db:"problem_id"`
-		ProblemIndex int           `db:"problem_index"`
-		Attempts     int           `db:"attempts"`
-		SolvedAt     sql.NullTime  `db:"solved_at"`
-		Penalty      sql.NullInt64 `db:"penalty"`
-		FirstBlood   sql.NullBool  `db:"first_blood"`
+	type userStandingRow struct {
+		UserId       int64   `db:"user_id"`
+		Username     string  `db:"username"`
+		FullName     string  `db:"full_name"`
+		Clan         *string `db:"clan"`
+		SolvedCount  int     `db:"solved_count"`
+		TotalPenalty int     `db:"penalty"`
 	}
 
-	rows := []standingsRow{}
-	err = h.db.Select(&rows, `
-		WITH participants AS (
-			SELECT DISTINCT u.id AS user_id, u.username, u.full_name, u.clan
-			FROM submissions s
-			JOIN users u ON u.id = s.user_id
-			WHERE s.contest_id = $1
-		),
-		problems AS (
-			SELECT problem_id, index
-			FROM contest_problems
-			WHERE contest_id = $1
-		)
-		SELECT
-			u.user_id,
+	var userStandings []userStandingRow
+	err = h.db.Select(&userStandings, `
+		SELECT 
+			cs.user_id,
 			u.username,
 			u.full_name,
 			u.clan,
-			p.problem_id,
-			p.index AS problem_index,
-			cs.solved_at,
-			cs.penalty,
-			cs.first_blood,
-			COALESCE(SUM(CASE WHEN s.id IS NOT NULL AND (cs.solved_at IS NULL OR s.submitted_at <= cs.solved_at) THEN 1 ELSE 0 END), 0) AS attempts
-		FROM participants u
-		CROSS JOIN problems p
-		LEFT JOIN contest_solves cs
-			ON cs.contest_id = $1 AND cs.user_id = u.user_id AND cs.problem_id = p.problem_id
-		LEFT JOIN submissions s
-			ON s.contest_id = $1 AND s.user_id = u.user_id AND s.problem_id = p.problem_id
-		GROUP BY u.user_id, u.username, u.full_name, u.clan, p.problem_id, p.index, cs.solved_at, cs.penalty, cs.first_blood
-		ORDER BY u.user_id, p.index
+			cs.solved_count,
+			cs.penalty
+		FROM contest_standings cs
+		JOIN users u ON u.id = cs.user_id
+		WHERE cs.contest_id = $1
+		ORDER BY cs.solved_count DESC, cs.penalty ASC
 	`, contestId)
 	if err != nil {
-		log.Println("Error fetching aggregated standings:", err)
+		log.Println("Error fetching user standings:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings")
 		return
 	}
 
-	userCapacity := 0
-	if len(contestProblems) > 0 {
-		userCapacity = (len(rows) + len(contestProblems) - 1) / len(contestProblems)
+	type problemSolveRow struct {
+		UserId       int64         `db:"user_id"`
+		ProblemId    int64         `db:"problem_id"`
+		ProblemIndex int           `db:"problem_index"`
+		SolvedAt     sql.NullTime  `db:"solved_at"`
+		Penalty      sql.NullInt64 `db:"penalty"`
+		FirstBlood   sql.NullBool  `db:"first_blood"`
+		AttemptCount sql.NullInt64 `db:"attempt_count"`
 	}
-	standings := make([]UserStanding, 0, userCapacity)
-	if len(rows) > 0 {
-		var current *UserStanding
-		var currentUserID int64
 
-		for _, row := range rows {
-			if current == nil || row.UserId != currentUserID {
-				standings = append(standings, UserStanding{
-					UserId:   row.UserId,
-					Username: row.Username,
-					FullName: row.FullName,
-					Clan:     row.Clan,
-					Problems: make([]ProblemStatus, 0, len(contestProblems)),
-				})
-				current = &standings[len(standings)-1]
-				currentUserID = row.UserId
-			}
+	var problemSolves []problemSolveRow
+	err = h.db.Select(&problemSolves, `
+		SELECT 
+			cs.user_id,
+			cs.problem_id,
+			cp.index AS problem_index,
+			cs.solved_at,
+			cs.penalty,
+			cs.first_blood,
+			cs.attempt_count
+		FROM contest_solves cs
+		JOIN contest_problems cp ON cp.problem_id = cs.problem_id AND cp.contest_id = cs.contest_id
+		WHERE cs.contest_id = $1
+		ORDER BY cs.user_id, cp.index
+	`, contestId)
+	if err != nil {
+		log.Println("Error fetching problem solves:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem solves")
+		return
+	}
 
-			penalty := 0
-			if row.Penalty.Valid {
-				penalty = int(row.Penalty.Int64)
+	problemSolvesMap := make(map[int64][]problemSolveRow)
+	for _, ps := range problemSolves {
+		problemSolvesMap[ps.UserId] = append(problemSolvesMap[ps.UserId], ps)
+	}
+
+	type attemptRow struct {
+		UserId    int64 `db:"user_id"`
+		ProblemId int64 `db:"problem_id"`
+		Attempts  int   `db:"attempts"`
+	}
+
+	var attempts []attemptRow
+	err = h.db.Select(&attempts, `
+		SELECT 
+			s.user_id,
+			s.problem_id,
+			COUNT(*) as attempts
+		FROM submissions s
+		WHERE s.contest_id = $1
+		GROUP BY s.user_id, s.problem_id
+	`, contestId)
+	if err != nil {
+		log.Println("Error fetching attempts:", err)
+	}
+
+	attemptsMap := make(map[string]int)
+	for _, a := range attempts {
+		key := fmt.Sprintf("%d:%d", a.UserId, a.ProblemId)
+		attemptsMap[key] = a.Attempts
+	}
+
+	standings := make([]UserStanding, 0, len(userStandings))
+	for _, us := range userStandings {
+		userStanding := UserStanding{
+			UserId:       us.UserId,
+			Username:     us.Username,
+			FullName:     us.FullName,
+			Clan:         us.Clan,
+			SolvedCount:  us.SolvedCount,
+			TotalPenalty: us.TotalPenalty,
+			Problems:     make([]ProblemStatus, 0, len(contestProblems)),
+		}
+
+		problemSolvesForUser := problemSolvesMap[us.UserId]
+		problemSolvesMapByProblem := make(map[int64]problemSolveRow)
+		for _, ps := range problemSolvesForUser {
+			problemSolvesMapByProblem[ps.ProblemId] = ps
+			if ps.SolvedAt.Valid {
+				solvedAt := ps.SolvedAt.Time
+				if userStanding.LastSolvedAt == nil || solvedAt.After(*userStanding.LastSolvedAt) {
+					userStanding.LastSolvedAt = &solvedAt
+				}
 			}
+		}
+
+		for _, cp := range contestProblems {
+			ps, hasSolve := problemSolvesMapByProblem[cp.ProblemId]
+			attemptKey := fmt.Sprintf("%d:%d", us.UserId, cp.ProblemId)
+			attemptCount := attemptsMap[attemptKey]
 
 			problemStatus := ProblemStatus{
-				ProblemId:    row.ProblemId,
-				ProblemIndex: row.ProblemIndex,
-				Attempts:     row.Attempts,
-				Penalty:      penalty,
-				FirstBlood:   row.FirstBlood.Valid && row.FirstBlood.Bool,
+				ProblemId:    cp.ProblemId,
+				ProblemIndex: cp.Index,
+				Attempts:     attemptCount,
+				Solved:       hasSolve,
 			}
 
-			if row.SolvedAt.Valid {
-				solvedAt := row.SolvedAt.Time
-				problemStatus.Solved = true
-				problemStatus.FirstSolvedAt = &solvedAt
-				current.TotalPenalty += penalty
-
-				current.SolvedCount++
-
-				if current.LastSolvedAt == nil || solvedAt.After(*current.LastSolvedAt) {
-					last := solvedAt
-					current.LastSolvedAt = &last
+			if hasSolve {
+				if ps.SolvedAt.Valid {
+					solvedAt := ps.SolvedAt.Time
+					problemStatus.FirstSolvedAt = &solvedAt
+				}
+				if ps.Penalty.Valid {
+					problemStatus.Penalty = int(ps.Penalty.Int64)
+				}
+				if ps.FirstBlood.Valid {
+					problemStatus.FirstBlood = ps.FirstBlood.Bool
 				}
 			}
 
-			current.Problems = append(current.Problems, problemStatus)
+			userStanding.Problems = append(userStanding.Problems, problemStatus)
 		}
+
+		standings = append(standings, userStanding)
 	}
-	// Sort standings: more solves -> lower penalty -> earlier last solve
-	sort.SliceStable(standings, func(i, j int) bool {
-		if standings[i].SolvedCount != standings[j].SolvedCount {
-			return standings[i].SolvedCount > standings[j].SolvedCount
-		}
-		if standings[i].TotalPenalty != standings[j].TotalPenalty {
-			return standings[i].TotalPenalty < standings[j].TotalPenalty
-		}
-		li, lj := standings[i].LastSolvedAt, standings[j].LastSolvedAt
-		switch {
-		case li == nil && lj == nil:
-			return standings[i].UserId < standings[j].UserId
-		case li == nil:
-			return false
-		case lj == nil:
-			return true
-		default:
-			return li.Before(*lj)
-		}
-	})
 
 	var data struct {
 		StartTime time.Time `db:"start_time"`
@@ -229,6 +291,28 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		StartTime:         data.StartTime,
 		DurationSeconds:   data.Duration,
 		Report:            report,
+	}
+
+	h.mu.Lock()
+	h.Last_standings[contestId] = struct {
+		timestamp *time.Time
+		standings *StandingsResponse
+	}{
+		timestamp: &currentTime,
+		standings: &response,
+	}
+	h.mu.Unlock()
+
+	totalStandings := len(response.Standings)
+	start := offset
+	end := offset + limit
+	if start >= totalStandings {
+		response.Standings = []UserStanding{}
+	} else {
+		if end > totalStandings {
+			end = totalStandings
+		}
+		response.Standings = response.Standings[start:end]
 	}
 
 	utils.SendResponse(w, http.StatusOK, response)

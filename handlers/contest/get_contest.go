@@ -77,48 +77,34 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	problems := []Problem{}
 
 	if contest.Status != "UPCOMING" {
-		var problemsQuery string
+		// Optimized query using pre-aggregated stats
+		problemsQuery := `
+			SELECT 
+				cp.problem_id, 
+				p.title, 
+				p.slug, 
+				cp.index,
+				COALESCE(cup.is_solved, false) as solved,
+				COALESCE(cup.attempt_count > 0, false) as attempted,
+				COALESCE(cps.solved_count, 0) as total_solvers
+			FROM contest_problems cp
+			JOIN problems p ON cp.problem_id = p.id
+			LEFT JOIN contest_problem_stats cps ON cps.contest_id = cp.contest_id AND cps.problem_id = cp.problem_id
+			LEFT JOIN contest_user_problems cup ON cup.contest_id = cp.contest_id 
+				AND cup.problem_id = cp.problem_id 
+				AND cup.user_id = $2
+			WHERE cp.contest_id = $1
+			ORDER BY cp.index
+		`
+
 		var rows *sql.Rows
 		var err error
 
 		if userId != nil {
-			// Authenticated user: include solved/attempted status
-			problemsQuery = `
-			SELECT 
-				cp.problem_id, 
-				p.title, 
-				p.slug, 
-				cp.index,
-				COALESCE(BOOL_OR(s.user_id = $2 AND LOWER(s.verdict) = 'ac'), false) as solved,
-				COALESCE(BOOL_OR(s.user_id = $2), false) as attempted,
-				COUNT(DISTINCT CASE WHEN LOWER(s.verdict) = 'ac' THEN s.user_id ELSE NULL END) as total_solvers
-			FROM contest_problems cp
-			JOIN problems p ON cp.problem_id = p.id
-			LEFT JOIN submissions s ON s.problem_id = cp.problem_id AND s.contest_id = cp.contest_id
-			WHERE cp.contest_id = $1
-			GROUP BY cp.problem_id, p.title, p.slug, cp.index
-			ORDER BY cp.index
-			`
 			rows, err = h.db.Query(problemsQuery, contestId, *userId)
 		} else {
-			// Unauthenticated: only public data
-			problemsQuery = `
-			SELECT 
-				cp.problem_id, 
-				p.title, 
-				p.slug, 
-				cp.index,
-				false as solved,
-				false as attempted,
-				COUNT(DISTINCT CASE WHEN LOWER(s.verdict) = 'ac' THEN s.user_id ELSE NULL END) as total_solvers
-			FROM contest_problems cp
-			JOIN problems p ON cp.problem_id = p.id
-			LEFT JOIN submissions s ON s.problem_id = cp.problem_id AND s.contest_id = cp.contest_id
-			WHERE cp.contest_id = $1
-			GROUP BY cp.problem_id, p.title, p.slug, cp.index
-			ORDER BY cp.index
-			`
-			rows, err = h.db.Query(problemsQuery, contestId)
+			// For unauthenticated users, pass NULL for user_id
+			rows, err = h.db.Query(problemsQuery, contestId, nil)
 		}
 
 		if err != nil {

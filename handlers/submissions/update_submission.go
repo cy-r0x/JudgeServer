@@ -38,6 +38,9 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 
 	if engineData.Verdict == "ac" {
 		h.updateStandingsForAccepted(engineData.SubmissionId)
+	} else {
+		// Track non-AC submissions for contest standings
+		h.updateStandingsForNonAccepted(engineData.SubmissionId, engineData.Verdict)
 	}
 
 	utils.SendResponse(w, http.StatusOK, map[string]any{"message": "Submission updated"})

@@ -13,6 +13,5 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manage
 	mux.Handle("POST /api/users/login", manager.With(h.Login))
 	mux.Handle("POST /api/users/register", manager.With(h.CreateUser, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 	mux.Handle("POST /api/users/register/csv", manager.With(h.AddUserCsv, middlewares.Authenticate, middlewares.AuthenticateAdmin))
-	mux.Handle("POST /api/users/logout", manager.With(h.Logout))
 	mux.Handle("POST /api/users/delete/{userId}", manager.With(h.DeleteUser, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 }

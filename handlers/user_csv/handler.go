@@ -5,17 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 )
-
-type Handler struct {
-	contestId  *int64
-	clanLength int
-	prefix     string
-	writer     *csv.Writer
-	mu         sync.Mutex
-	FilePath   string
-}
 
 func NewHandler(prefix string, clanLength int, contestId int64) (*Handler, error) {
 	const dir = "./generated_csv/"

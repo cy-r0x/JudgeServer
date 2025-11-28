@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/judgenot0/judge-backend/handlers/structs"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user structs.User
+	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return

@@ -15,6 +15,7 @@ import (
 	"github.com/judgenot0/judge-backend/handlers/setter"
 	"github.com/judgenot0/judge-backend/handlers/standings"
 	"github.com/judgenot0/judge-backend/handlers/submissions"
+	usercsv "github.com/judgenot0/judge-backend/handlers/user_csv"
 	"github.com/judgenot0/judge-backend/handlers/users"
 	"github.com/judgenot0/judge-backend/infra/db"
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -50,6 +51,7 @@ func Serve() {
 	standingsHandler := standings.NewHandler(dbConn)
 	submissionsHandler := submissions.NewHandler(dbConn, config)
 	usersHandler := users.NewHandler(config, dbConn)
+	userCsvHandler := usercsv.NewHandler(dbConn)
 	compilerunHandler := compilerun.NewHandler(config)
 
 	//Init New Mux and Init Routes
@@ -62,6 +64,7 @@ func Serve() {
 	submissionsHandler.RegisterRoutes(mux, manager, middlewares)
 	standingsHandler.RegisterRoutes(mux, manager, middlewares)
 	usersHandler.RegisterRoutes(mux, manager, middlewares)
+	userCsvHandler.RegisterRoutes(mux, manager, middlewares)
 	compilerunHandler.RegisterRoute(mux, manager, middlewares)
 
 	go func() {

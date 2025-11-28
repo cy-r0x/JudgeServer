@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/judgenot0/judge-backend/handlers/structs"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -21,7 +20,7 @@ func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	// Query to get users where allowed_contest matches contestId
 	query := `SELECT id, full_name, username, clan, room_no, pc_no FROM users WHERE allowed_contest = $1`
 
-	var users []structs.User
+	var users []User
 	err = h.db.Select(&users, query, contestIdInt)
 	if err != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch users")

@@ -1,4 +1,4 @@
-package users
+package usercsv
 
 import "net/http"
 

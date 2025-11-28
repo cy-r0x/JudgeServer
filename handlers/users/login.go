@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/judgenot0/judge-backend/handlers/structs"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -26,7 +24,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// fetch user from DB
-	var dbUser structs.User
+	var dbUser User
 	query := `SELECT id, full_name, username, password, role, clan, room_no, pc_no, allowed_contest FROM users WHERE username=$1 LIMIT 1`
 	err := h.db.Get(&dbUser, query, creds.Username)
 	if err != nil {

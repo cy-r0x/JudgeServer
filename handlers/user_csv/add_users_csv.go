@@ -1,14 +1,13 @@
-package users
+package usercsv
 
 import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
 
-	"github.com/judgenot0/judge-backend/handlers/structs"
-	usercsv "github.com/judgenot0/judge-backend/handlers/user_csv"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -47,12 +46,12 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	csvHandler, err := usercsv.NewHandler(prefix, clanLengthInt, contestIdInt)
+	err = h.NewWriteHandler(prefix, clanLengthInt, contestIdInt)
 	if err != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "error creating csv file")
 		return
 	}
-	csvHandler.WriteHeader()
+	h.WriteHeader()
 
 	csvReader := csv.NewReader(file)
 	records, err := csvReader.ReadAll()
@@ -63,7 +62,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 
 	// Process users concurrently
 	type userResult struct {
-		user structs.User
+		user User
 		err  error
 		idx  int
 	}
@@ -72,19 +71,19 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 
 	// Process each record concurrently
-	for idx, record := range records {
+	for idx, record := range records[1:] {
 		wg.Add(1)
 		go func(idx int, record []string) {
 			defer wg.Done()
 
-			user, err := csvHandler.WriteUser(record, idx)
+			user, err := h.GenerateUser(record, idx)
 			if err != nil {
-				results <- userResult{err: fmt.Errorf("error writing to csv: %w", err), idx: idx}
+				results <- userResult{err: fmt.Errorf("error generating user: %w", err), idx: idx}
 				return
 			}
 
-			// Hash password (CPU-intensive operation)
-			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+			// Hash password in parallel (CPU-intensive operation)
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.UnHashedPassword), bcrypt.DefaultCost)
 			if err != nil {
 				results <- userResult{err: fmt.Errorf("error hashing password: %w", err), idx: idx}
 				return
@@ -102,7 +101,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Collect results in order
-	users := make([]structs.User, len(records))
+	users := make([]User, len(records)-1) // Skip header row
 	for result := range results {
 		if result.err != nil {
 			utils.SendResponse(w, http.StatusInternalServerError, result.err.Error())
@@ -110,6 +109,20 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 		}
 		users[result.idx] = result.user
 	}
+
+	//sort the user by room no and pc no
+	sort.Slice(users, func(i, j int) bool {
+		if users[i].RoomNo == nil || users[j].RoomNo == nil {
+			return false
+		}
+		if *users[i].RoomNo == *users[j].RoomNo {
+			if users[i].PcNo == nil || users[j].PcNo == nil {
+				return false
+			}
+			return safeIntParse(*users[i].PcNo) < safeIntParse(*users[j].PcNo)
+		}
+		return *users[i].RoomNo < *users[j].RoomNo
+	})
 
 	// Insert all users in a single transaction
 	trx, err := h.db.Beginx()
@@ -121,11 +134,19 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		INSERT INTO users (full_name, username, password, clan, room_no, pc_no, role, allowed_contest)
-		VALUES (:full_name,:username, :password, :clan, :room_no, :pc_no, :role, :allowed_contest);
+		VALUES ($1,$2, $3, $4, $5, $6, $7, $8) RETURNING id;
 	`
 
 	for _, user := range users {
-		_, err = trx.NamedExec(query, user)
+
+		err = h.WriteUser(user)
+		if err != nil {
+			utils.SendResponse(w, http.StatusInternalServerError, "error writing user to CSV")
+			return
+		}
+
+		// Password already hashed in parallel goroutines above
+		_, err = trx.Exec(query, user.FullName, user.Username, user.Password, user.Clan, user.RoomNo, user.PcNo, user.Role, user.AllowedContest)
 		if err != nil {
 			utils.SendResponse(w, http.StatusInternalServerError, "error registering user")
 			return
@@ -133,9 +154,8 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = `INSERT INTO filepath (contest_id, file_path) VALUES ($1, $2)`
-	_, err = trx.Exec(query, contestIdInt, csvHandler.FilePath)
+	_, err = trx.Exec(query, contestIdInt, h.Writer.FilePath)
 	if err != nil {
-		fmt.Println(err)
 		utils.SendResponse(w, http.StatusInternalServerError, "error saving file path")
 		return
 	}

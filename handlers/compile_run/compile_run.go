@@ -15,7 +15,6 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 
 	// Forward request to engine
 	url := h.config.EngineUrl + "/run"
-	log.Println(url)
 	resp, err := http.Post(url, "application/json", r.Body)
 	if err != nil {
 		// Check if the error is due to payload size limit

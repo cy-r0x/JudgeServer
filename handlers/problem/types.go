@@ -16,22 +16,28 @@ type Testcase struct {
 }
 
 type Problem struct {
-	Id                 int64      `json:"id" db:"id"`
-	Title              string     `json:"title" db:"title"`
-	Slug               string     `json:"slug" db:"slug"`
-	Statement          string     `json:"statement" db:"statement"`
-	InputStatement     string     `json:"input_statement" db:"input_statement"`
-	OutputStatement    string     `json:"output_statement" db:"output_statement"`
-	TimeLimit          float32    `json:"time_limit" db:"time_limit"`
-	MemoryLimit        float32    `json:"memory_limit" db:"memory_limit"`
-	Testcases          []Testcase `json:"test_cases"`
-	CheckerType        string     `json:"checker_type" db:"checker_type"`
-	CheckerStrictSpace bool       `json:"checker_strict_space" db:"checker_strict_space"`
-	CheckerPrecision   *string    `json:"checker_precision" db:"checker_precision"`
-	StartTime          *time.Time `json:"start_time,omitempty" db:"start_time"`
-	DurationSeconds    *int64     `json:"duration_seconds,omitempty" db:"duration_seconds"`
-	CreatedBy          int64      `json:"created_by" db:"created_by"`
-	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
+	Id                 int64               `json:"id" db:"id"`
+	Title              string              `json:"title" db:"title"`
+	Slug               string              `json:"slug" db:"slug"`
+	Statement          string              `json:"statement" db:"statement"`
+	InputStatement     string              `json:"input_statement" db:"input_statement"`
+	OutputStatement    string              `json:"output_statement" db:"output_statement"`
+	TimeLimit          float32             `json:"time_limit" db:"time_limit"`
+	MemoryLimit        float32             `json:"memory_limit" db:"memory_limit"`
+	Testcases          []Testcase          `json:"test_cases"`
+	CheckerType        string              `json:"checker_type" db:"checker_type"`
+	CheckerStrictSpace bool                `json:"checker_strict_space" db:"checker_strict_space"`
+	CheckerPrecision   *string             `json:"checker_precision" db:"checker_precision"`
+	StartTime          *time.Time          `json:"start_time,omitempty" db:"start_time"`
+	DurationSeconds    *int64              `json:"duration_seconds,omitempty" db:"duration_seconds"`
+	CreatedBy          int64               `json:"created_by" db:"created_by"`
+	CreatedAt          time.Time           `json:"created_at" db:"created_at"`
+	LastSubmission     *LastSubmissionData `json:"last_submission,omitempty"`
+}
+
+type LastSubmissionData struct {
+	SourceCode string `json:"source_code" db:"source_code"`
+	Language   string `json:"language" db:"language"`
 }
 
 type Handler struct {

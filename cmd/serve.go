@@ -52,7 +52,7 @@ func Serve() {
 	submissionsHandler := submissions.NewHandler(dbConn, config)
 	usersHandler := users.NewHandler(config, dbConn)
 	userCsvHandler := usercsv.NewHandler(dbConn)
-	compilerunHandler := compilerun.NewHandler(config)
+	compilerunHandler := compilerun.NewHandler(dbConn, config)
 
 	//Init New Mux and Init Routes
 	mux := http.NewServeMux()

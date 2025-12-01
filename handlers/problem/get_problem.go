@@ -3,32 +3,11 @@ package problem
 import (
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/judgenot0/judge-backend/middlewares"
 	"github.com/judgenot0/judge-backend/utils"
 )
-
-func (h *Handler) fetchTestcases(problemId string, isSample bool) ([]Testcase, error) {
-	query := `
-		SELECT id, problem_id, input, expected_output, is_sample, created_at
-		FROM testcases
-		WHERE problem_id = $1`
-	args := []any{problemId}
-
-	if isSample {
-		query += ` AND is_sample = TRUE`
-	}
-
-	query += ` ORDER BY is_sample DESC, id ASC`
-
-	var testcases []Testcase
-	if err := h.db.Select(&testcases, query, args...); err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	return testcases, nil
-}
 
 func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
@@ -44,7 +23,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var problem Problem
-	isSampleOnly := false
+	isSampleOnly := true
 
 	switch payload.Role {
 	case "user":
@@ -67,8 +46,6 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 			utils.SendResponse(w, http.StatusForbidden, "You don't have access to this problem")
 			return
 		}
-
-		isSampleOnly = true
 		// Fall through to fetch problem data
 	case "setter":
 		// Check if the problem was created by this setter
@@ -115,14 +92,48 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch testcases and last submission concurrently
+	var wg sync.WaitGroup
+	var testcases []Testcase
+	var lastSubmission *LastSubmissionData
+
 	// Fetch testcases
-	testcases, tcErr := h.fetchTestcases(problemId, isSampleOnly)
-	if tcErr != nil {
-		log.Println("Error fetching testcases:", tcErr)
-		// Continue anyway as we at least have the problem data
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		tc, tcErr := h.fetchTestcases(problemId, isSampleOnly)
+		if tcErr != nil {
+			log.Println("Error fetching testcases:", tcErr)
+			// Continue anyway as we at least have the problem data
+		} else {
+			testcases = tc
+		}
+	}()
+
+	// Fetch last submission for users
+	if payload.Role == "user" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var ls LastSubmissionData
+			err := h.db.Get(&ls, `
+				SELECT source_code, language 
+				FROM submissions 
+				WHERE user_id = $1 AND problem_id = $2 
+				ORDER BY submitted_at DESC 
+				LIMIT 1
+			`, payload.Sub, problemId)
+
+			if err == nil {
+				lastSubmission = &ls
+			}
+		}()
 	}
 
+	wg.Wait()
+
 	problem.Testcases = testcases
+	problem.LastSubmission = lastSubmission
 
 	utils.SendResponse(w, http.StatusOK, problem)
 }

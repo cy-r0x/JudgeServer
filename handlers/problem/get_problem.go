@@ -23,7 +23,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var problem Problem
-	isSampleOnly := true
+	isSampleOnly := false
 
 	switch payload.Role {
 	case "user":
@@ -46,6 +46,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 			utils.SendResponse(w, http.StatusForbidden, "You don't have access to this problem")
 			return
 		}
+		isSampleOnly = true
 		// Fall through to fetch problem data
 	case "setter":
 		// Check if the problem was created by this setter

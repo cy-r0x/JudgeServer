@@ -1,6 +1,7 @@
 package submissions
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,12 +12,22 @@ import (
 
 func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 
-	const limit = 10
-
+	limit := 20
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
 		return
+	}
+
+	strLimit := r.URL.Query().Get("limit")
+	verdictFilter := r.URL.Query().Get("verdict")
+	fmt.Println(verdictFilter)
+
+	if strLimit != "" {
+		parsedLimit, err := strconv.Atoi(strLimit)
+		if err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
 	}
 
 	page := r.URL.Query().Get("page")
@@ -55,10 +66,17 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 			COUNT(*) OVER() as total_count
 		FROM submissions 
 		WHERE user_id=$1 AND contest_id=$2 
-		ORDER BY submitted_at DESC 
-		LIMIT $3 OFFSET $4
 	`
-	err = h.db.Select(&results, query, userId, *contestId, limit, offset)
+
+	if verdictFilter != "" {
+		query += " AND verdict=$3"
+		query += " ORDER BY submitted_at DESC LIMIT $4 OFFSET $5"
+		err = h.db.Select(&results, query, userId, *contestId, verdictFilter, limit, offset)
+	} else {
+		query += " ORDER BY submitted_at DESC LIMIT $3 OFFSET $4"
+		err = h.db.Select(&results, query, userId, *contestId, limit, offset)
+	}
+
 	if err != nil {
 		log.Println("DB Query Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch submissions")

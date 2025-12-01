@@ -9,9 +9,18 @@ import (
 )
 
 func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
-	const limit = 10
+	var limit int = 20
 
 	contestId := r.PathValue("contestId")
+	strLimit := r.URL.Query().Get("limit")
+	verdictFilter := r.URL.Query().Get("verdict")
+
+	if strLimit != "" {
+		parsedLimit, err := strconv.Atoi(strLimit)
+		if err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
 
 	page := r.URL.Query().Get("page")
 	if page == "" {
@@ -42,11 +51,22 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 			COUNT(*) OVER() as total_count
 		FROM submissions sub 
 		LEFT JOIN users u ON sub.user_id = u.id
-		WHERE sub.contest_id=$1 
-		ORDER BY sub.submitted_at DESC 
-		LIMIT $2 OFFSET $3
+		WHERE sub.contest_id=$1
 	`
-	err = h.db.Select(&results, query, contestId, limit, offset)
+
+	if verdictFilter != "" {
+		query += " AND sub.verdict=$2"
+		query += " ORDER BY sub.submitted_at DESC LIMIT $3 OFFSET $4"
+	} else {
+		query += " ORDER BY sub.submitted_at DESC LIMIT $2 OFFSET $3"
+	}
+
+	if verdictFilter != "" {
+		err = h.db.Select(&results, query, contestId, verdictFilter, limit, offset)
+	} else {
+		err = h.db.Select(&results, query, contestId, limit, offset)
+	}
+
 	if err != nil {
 		log.Println("DB Query Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch submissions")

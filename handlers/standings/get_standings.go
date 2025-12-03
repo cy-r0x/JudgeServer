@@ -262,13 +262,15 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		Page:               crrPage,
 	}
 
+	cachedResponse := response
+
 	h.mu.Lock()
 	h.Last_standings[contestId] = struct {
 		timestamp *time.Time
 		standings *StandingsResponse
 	}{
 		timestamp: &currentTime,
-		standings: &response,
+		standings: &cachedResponse,
 	}
 	h.mu.Unlock()
 

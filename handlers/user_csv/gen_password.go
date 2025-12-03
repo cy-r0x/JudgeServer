@@ -1,16 +1,18 @@
 package usercsv
 
 import (
-	"math/rand"
-	"strings"
+	"crypto/rand"
+	"encoding/base64"
 )
 
 func generatePassword() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#&$"
 	const length = 8
-	var password strings.Builder
-	for range length {
-		password.WriteByte(charset[rand.Intn(len(charset))])
+
+	raw := make([]byte, length)
+	_, err := rand.Read(raw)
+	if err != nil {
+		return "ChangeMe123!"
 	}
-	return password.String()
+
+	return base64.RawURLEncoding.EncodeToString(raw)
 }

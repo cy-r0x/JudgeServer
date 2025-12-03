@@ -60,6 +60,12 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 				}
 				response.Standings = response.Standings[start:end]
 			}
+
+			response.TotalItem = totalStandings
+			response.TotalPages = (totalStandings + limit - 1) / limit
+			response.Limit = limit
+			response.Page = crrPage
+
 			utils.SendResponse(w, http.StatusOK, response)
 			return
 		}

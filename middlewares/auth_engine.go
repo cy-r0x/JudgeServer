@@ -50,6 +50,8 @@ func VerifyToken(enginePayload EnginePayload, secret string) bool {
 
 func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		const maxBodySize = 10 * 1024
+		r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 		decoder := json.NewDecoder(r.Body)
 		var enginePayload EnginePayload

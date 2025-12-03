@@ -27,7 +27,7 @@ type EnginePayload struct {
 }
 
 func VerifyToken(enginePayload EnginePayload, secret string) bool {
-	if secret == "" {
+	if secret == "" || enginePayload.Data == nil {
 		return false
 	}
 

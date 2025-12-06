@@ -43,33 +43,33 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 
 	h.mu.RLock()
 	entry, exists := h.Last_standings[contestId]
-	h.mu.RUnlock()
+	
+	if exists && entry.timestamp != nil && currentTime.Sub(*entry.timestamp) < 15*time.Second {
+		response := *entry.standings
+		h.mu.RUnlock()
+		
+		totalStandings := len(response.Standings)
 
-	if exists && entry.timestamp != nil {
-		if currentTime.Sub(*entry.timestamp) < 15*time.Second {
-			response := *entry.standings
-			totalStandings := len(response.Standings)
-
-			start := offset
-			end := offset + limit
-			if start >= totalStandings {
-				response.Standings = []UserStanding{}
-			} else {
-				if end > totalStandings {
-					end = totalStandings
-				}
-				response.Standings = response.Standings[start:end]
+		start := offset
+		end := offset + limit
+		if start >= totalStandings {
+			response.Standings = []UserStanding{}
+		} else {
+			if end > totalStandings {
+				end = totalStandings
 			}
-
-			response.TotalItem = totalStandings
-			response.TotalPages = (totalStandings + limit - 1) / limit
-			response.Limit = limit
-			response.Page = crrPage
-
-			utils.SendResponse(w, http.StatusOK, response)
-			return
+			response.Standings = response.Standings[start:end]
 		}
+
+		response.TotalItem = totalStandings
+		response.TotalPages = (totalStandings + limit - 1) / limit
+		response.Limit = limit
+		response.Page = crrPage
+
+		utils.SendResponse(w, http.StatusOK, response)
+		return
 	}
+	h.mu.RUnlock()
 
 	// Fetch all data in parallel using goroutines
 	var wg sync.WaitGroup

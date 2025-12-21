@@ -1,0 +1,149 @@
+package standings
+
+import (
+	"log"
+	"net/http"
+	"strconv"
+	"sync"
+
+	"github.com/judgenot0/judge-backend/utils"
+)
+
+type ExportedUserStanding struct {
+	FullName   string  `json:"full_name"`
+	Clan       *string `json:"clan"`
+	SolveCount int     `json:"solve_count"`
+	Solved     []int   `json:"solved"`
+}
+
+func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
+	contestIdStr := r.PathValue("contestId")
+	if contestIdStr == "" {
+		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
+		return
+	}
+
+	contestId, err := strconv.ParseInt(contestIdStr, 10, 64)
+	if err != nil {
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
+		return
+	}
+
+	// Fetch all data in parallel using goroutines
+	var wg sync.WaitGroup
+	var contestProblems []ContestProblem
+	var userStandings []userStandingRow
+	var userProblems []userProblemRow
+	var errChan = make(chan error, 3)
+
+	// Query 1: Fetch contest problems
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := h.db.Select(&contestProblems, `
+			SELECT problem_id, index, title
+			FROM contest_problems cp
+			JOIN problems p ON p.id = cp.problem_id
+			WHERE contest_id = $1 
+			ORDER BY index ASC
+		`, contestId)
+		if err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Query 2: Fetch user standings
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := h.db.Select(&userStandings, `
+			SELECT 
+				u.id AS user_id,
+				u.username,
+				u.full_name,
+				u.clan,
+				COALESCE(cs.solved_count, 0) AS solved_count,
+				COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0) AS penalty,
+				cs.last_solved_at
+			FROM (
+				SELECT DISTINCT user_id 
+				FROM submissions 
+				WHERE contest_id = $1
+			) participants
+			JOIN users u ON u.id = participants.user_id
+			LEFT JOIN contest_standings cs ON cs.contest_id = $1 AND cs.user_id = participants.user_id
+			ORDER BY COALESCE(cs.solved_count, 0) DESC, (COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0)) ASC, u.id ASC
+		`, contestId)
+		if err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Query 3: Fetch user-problem details
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := h.db.Select(&userProblems, `
+			SELECT 
+				user_id,
+				problem_id,
+				problem_index,
+				is_solved,
+				solved_at,
+				penalty,
+				attempt_count,
+				first_blood
+			FROM contest_user_problems
+			WHERE contest_id = $1
+			ORDER BY user_id, problem_index
+		`, contestId)
+		if err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Wait for all queries to complete
+	wg.Wait()
+	close(errChan)
+
+	// Check for any errors
+	for err := range errChan {
+		log.Println("Database query error:", err)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data")
+		return
+	}
+
+	// Build map for efficient lookup
+	userProblemsMap := make(map[int64]map[int64]userProblemRow)
+	for _, up := range userProblems {
+		if _, exists := userProblemsMap[up.UserId]; !exists {
+			userProblemsMap[up.UserId] = make(map[int64]userProblemRow)
+		}
+		userProblemsMap[up.UserId][up.ProblemId] = up
+	}
+
+	// Build exported standings
+	exportedStandings := make([]ExportedUserStanding, 0, len(userStandings))
+	for _, us := range userStandings {
+		solved := make([]int, 0)
+		userProblemData := userProblemsMap[us.UserId]
+
+		for _, cp := range contestProblems {
+			up, hasData := userProblemData[cp.ProblemId]
+			if hasData && up.IsSolved {
+				solved = append(solved, cp.Index)
+			}
+		}
+
+		exportedStanding := ExportedUserStanding{
+			FullName:   us.FullName,
+			Clan:       us.Clan,
+			SolveCount: us.SolvedCount,
+			Solved:     solved,
+		}
+
+		exportedStandings = append(exportedStandings, exportedStanding)
+	}
+
+	utils.SendResponse(w, http.StatusOK, exportedStandings)
+}

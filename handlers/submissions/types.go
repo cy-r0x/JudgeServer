@@ -16,6 +16,7 @@ type Submission struct {
 	RoomNo        *string   `json:"room_no,omitempty" db:"room_no"`
 	PcNo          *string   `json:"pc_no,omitempty" db:"pc_no"`
 	ProblemId     int64     `json:"problem_id" db:"problem_id"`
+	ProblemIndex  int       `json:"problem_index" db:"problem_index"`
 	ContestId     int64     `json:"contest_id,omitempty" db:"contest_id"`
 	Language      string    `json:"language" db:"language"`
 	SourceCode    string    `json:"source_code,omitempty" db:"source_code"`

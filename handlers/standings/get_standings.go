@@ -43,11 +43,11 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 
 	h.mu.RLock()
 	entry, exists := h.Last_standings[contestId]
-	
+
 	if exists && entry.timestamp != nil && currentTime.Sub(*entry.timestamp) < 15*time.Second {
 		response := *entry.standings
 		h.mu.RUnlock()
-		
+
 		totalStandings := len(response.Standings)
 
 		start := offset
@@ -216,10 +216,10 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 			up, hasData := userProblemData[cp.ProblemId]
 
 			problemStatus := ProblemStatus{
-				ProblemId:    cp.ProblemId,
-				ProblemIndex: cp.Index,
-				Attempts:     0,
-				Solved:       false,
+				Attempts:   0,
+				Solved:     false,
+				Penalty:    0,
+				FirstBlood: false,
 			}
 
 			if hasData {
@@ -239,7 +239,12 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		standings = append(standings, userStanding)
 	}
 
-	// Build report from stats
+	// Build problem mapping and stats
+	problem_mapping := make(map[int]int64)
+	for _, cp := range contestProblems {
+		problem_mapping[cp.Index] = cp.ProblemId
+	}
+
 	problem_solve_status := make(map[int]ProblemSolveStatus)
 	for _, stat := range stats {
 		problem_solve_status[stat.ProblemIndex] = ProblemSolveStatus{
@@ -251,7 +256,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	response := StandingsResponse{
 		ContestId:          contestId,
 		ContestTitle:       contestInfo.Title,
-		TotalProblemCount:  len(contestProblems),
+		ProblemMapping:     problem_mapping,
 		Standings:          standings,
 		StartTime:          contestInfo.StartTime,
 		DurationSeconds:    contestInfo.DurationSeconds,

@@ -45,12 +45,13 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 	var results []SubmissionWithCount
 	query := `
 		SELECT 
-			sub.id, sub.user_id, u.username, sub.problem_id, sub.contest_id, sub.language, 
-			sub.verdict, sub.execution_time, sub.memory_used, sub.submitted_at, 
-			u.clan, u.full_name, u.room_no, u.pc_no,
+			sub.id, sub.user_id, u.username, sub.problem_id, cp.index as problem_index, 
+			sub.contest_id, sub.language, sub.verdict, sub.execution_time, 
+			sub.memory_used, sub.submitted_at, u.clan, u.full_name, u.room_no, u.pc_no,
 			COUNT(*) OVER() as total_count
 		FROM submissions sub 
 		LEFT JOIN users u ON sub.user_id = u.id
+		LEFT JOIN contest_problems cp ON sub.contest_id = cp.contest_id AND sub.problem_id = cp.problem_id
 		WHERE sub.contest_id=$1
 	`
 

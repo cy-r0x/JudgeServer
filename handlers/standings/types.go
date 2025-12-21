@@ -9,8 +9,6 @@ import (
 )
 
 type ProblemStatus struct {
-	ProblemId     int64      `json:"problem_id"`
-	ProblemIndex  int        `json:"problem_index"`
 	Solved        bool       `json:"solved"`
 	FirstSolvedAt *time.Time `json:"first_solved_at,omitempty"`
 	Attempts      int        `json:"attempts"`
@@ -37,7 +35,7 @@ type ProblemSolveStatus struct {
 type StandingsResponse struct {
 	ContestId          int64                      `json:"contest_id"`
 	ContestTitle       string                     `json:"contest_title"`
-	TotalProblemCount  int                        `json:"total_problem_count"`
+	ProblemMapping     map[int]int64              `json:"problem_mapping"`
 	Standings          []UserStanding             `json:"standings"`
 	StartTime          time.Time                  `json:"start_time"`
 	DurationSeconds    int64                      `json:"duration_seconds"`

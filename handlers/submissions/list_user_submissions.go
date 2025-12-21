@@ -61,11 +61,13 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	var results []SubmissionWithCount
 	query := `
 		SELECT 
-			id, username, problem_id, language, 
-			verdict, execution_time, memory_used, submitted_at,
+			sub.id, sub.username, sub.problem_id, cp.index as problem_index, 
+			sub.language, sub.verdict, sub.execution_time, 
+			sub.memory_used, sub.submitted_at,
 			COUNT(*) OVER() as total_count
-		FROM submissions 
-		WHERE user_id=$1 AND contest_id=$2 
+		FROM submissions sub
+		LEFT JOIN contest_problems cp ON sub.contest_id = cp.contest_id AND sub.problem_id = cp.problem_id
+		WHERE sub.user_id=$1 AND sub.contest_id=$2 
 	`
 
 	if verdictFilter != "" {

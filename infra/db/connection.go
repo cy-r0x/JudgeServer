@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
-	_ "github.com/lib/pq"
-	migrate "github.com/rubenv/sql-migrate"
+	"github.com/judgenot0/judge-backend/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func GetConnectionString(cfg *config.DBConfig) string {
@@ -23,25 +23,56 @@ func GetConnectionString(cfg *config.DBConfig) string {
 	return fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=%s", user, password, host, port, dbname, sslmode)
 }
 
-func NewConnection(cfg *config.DBConfig) (*sqlx.DB, error) {
+func NewConnection(cfg *config.DBConfig) (*gorm.DB, error) {
 	dbSource := GetConnectionString(cfg)
-	dbCon, err := sqlx.Connect("postgres", dbSource)
+	dbCon, err := gorm.Open(postgres.Open(dbSource), &gorm.Config{})
 	if err != nil {
-		log.Println(err)
+		log.Println("Database connection error:", err)
 		return nil, err
 	}
 	return dbCon, nil
 }
 
-func Migrate(dbConn *sqlx.DB, dir string) error {
-	source := migrate.FileMigrationSource{
-		Dir: dir,
-	}
-	_, err := migrate.Exec(dbConn.DB, "postgres", source, migrate.Up)
+func Migrate(dbConn *gorm.DB) error {
+	err := dbConn.AutoMigrate(
+		&models.User{},
+		&models.Contest{},
+		&models.Problem{},
+		&models.ContestProblem{},
+		&models.Submission{},
+		&models.Testcase{},
+		&models.Filepath{},
+		&models.ContestStanding{},
+		&models.ContestSolve{},
+		&models.ContestUserProblem{},
+		&models.ContestProblemStat{},
+	)
 	if err != nil {
-		log.Println(err)
+		log.Println("Failed to AutoMigrate:", err)
 		return err
 	}
-	log.Println("Migration Done")
+
+	// Create default admin user if it doesn't exist
+	var adminCount int64
+	if err := dbConn.Model(&models.User{}).Where("username = ?", "admin").Count(&adminCount).Error; err != nil {
+		log.Println("Failed to check if admin user exists:", err)
+		return err
+	}
+
+	if adminCount == 0 {
+		adminUser := models.User{
+			FullName: "admin",
+			Username: "admin",
+			Password: "$2a$12$Ncde3vjx7AbBXwyDlzgN5ue8PKgD1XexbvWdityKLbQHsHJAi1jKG",
+			Role:     "admin",
+		}
+		if err := dbConn.Create(&adminUser).Error; err != nil {
+			log.Println("Failed to create default admin user:", err)
+			return err
+		}
+		log.Println("Default admin user created successfully")
+	}
+
+	log.Println("GORM AutoMigration Done")
 	return nil
 }

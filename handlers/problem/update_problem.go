@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -19,65 +20,48 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updatedProblem Problem
-	if err := json.NewDecoder(r.Body).Decode(&updatedProblem); err != nil {
+	var reqProblem Problem
+	if err := json.NewDecoder(r.Body).Decode(&reqProblem); err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	// For setters, verify they created this problem
-	var createdBy int64
-	err := h.db.QueryRow(`SELECT created_by FROM problems WHERE id = $1`, updatedProblem.Id).Scan(&createdBy)
+	var createdBy *uint
+	err := h.db.Model(&models.Problem{}).Select("created_by").Where("id = ?", reqProblem.Id).Scan(&createdBy).Error
 	if err != nil {
 		log.Println("Error checking problem creator:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem creator")
 		return
 	}
 
-	if createdBy != payload.Sub {
+	if createdBy == nil || *createdBy != uint(payload.Sub) {
 		utils.SendResponse(w, http.StatusForbidden, "You can only update problems you've created")
 		return
 	}
 
-	// Start a transaction for the update operation
-	tx, err := h.db.Beginx()
-	if err != nil {
-		log.Println("Error starting transaction:", err)
+	slug := strings.ReplaceAll(strings.ToLower(reqProblem.Title), " ", "-")
+
+	updateData := models.Problem{
+		Title:              reqProblem.Title,
+		Slug:               slug,
+		Statement:          reqProblem.Statement,
+		InputStatement:     reqProblem.InputStatement,
+		OutputStatement:    reqProblem.OutputStatement,
+		TimeLimit:          float64(reqProblem.TimeLimit),
+		MemoryLimit:        float64(reqProblem.MemoryLimit),
+		CheckerType:        reqProblem.CheckerType,
+		CheckerStrictSpace: reqProblem.CheckerStrictSpace,
+		CheckerPrecision:   reqProblem.CheckerPrecision,
+	}
+
+	result := h.db.Model(&models.Problem{}).Where("id = ?", reqProblem.Id).Updates(updateData)
+	if result.Error != nil {
+		log.Println("Error updating problem:", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem")
 		return
 	}
 
-	// Update the problem's main details
-	_, err = tx.Exec(`
-		UPDATE problems 
-		SET title = $1, statement = $2, input_statement = $3, output_statement = $4,
-		    time_limit = $5, memory_limit = $6, checker_type = $7, checker_strict_space = $8, checker_precision = $9, slug = $10
-		WHERE id = $11
-	`,
-		updatedProblem.Title,
-		updatedProblem.Statement,
-		updatedProblem.InputStatement,
-		updatedProblem.OutputStatement,
-		updatedProblem.TimeLimit,
-		updatedProblem.MemoryLimit,
-		updatedProblem.CheckerType,
-		updatedProblem.CheckerStrictSpace,
-		updatedProblem.CheckerPrecision,
-		strings.ReplaceAll(strings.ToLower(updatedProblem.Title), " ", "-"),
-		updatedProblem.Id)
-
-	if err != nil {
-		tx.Rollback()
-		log.Println("Error updating problem:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem")
-		return
-	}
-	if err := tx.Commit(); err != nil {
-		log.Println("Error committing transaction:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem")
-		return
-	}
-
-	r.SetPathValue("problemId", strconv.FormatInt(updatedProblem.Id, 10))
+	r.SetPathValue("problemId", strconv.FormatInt(reqProblem.Id, 10))
 	h.GetProblem(w, r)
 }

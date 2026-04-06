@@ -40,13 +40,13 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Select(&contestProblems, `
-			SELECT problem_id, index, title
+		err := h.db.Raw(`
+			SELECT cp.problem_id, cp.index, p.title
 			FROM contest_problems cp
 			JOIN problems p ON p.id = cp.problem_id
-			WHERE contest_id = $1 
-			ORDER BY index ASC
-		`, contestId)
+			WHERE cp.contest_id = ? 
+			ORDER BY cp.index ASC
+		`, contestId).Scan(&contestProblems).Error
 		if err != nil {
 			errChan <- err
 		}
@@ -56,7 +56,7 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Select(&userStandings, `
+		err := h.db.Raw(`
 			SELECT 
 				u.id AS user_id,
 				u.username,
@@ -68,12 +68,12 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 			FROM (
 				SELECT DISTINCT user_id 
 				FROM submissions 
-				WHERE contest_id = $1
+				WHERE contest_id = ?
 			) participants
 			JOIN users u ON u.id = participants.user_id
-			LEFT JOIN contest_standings cs ON cs.contest_id = $1 AND cs.user_id = participants.user_id
+			LEFT JOIN contest_standings cs ON cs.contest_id = ? AND cs.user_id = participants.user_id
 			ORDER BY COALESCE(cs.solved_count, 0) DESC, (COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0)) ASC, u.id ASC
-		`, contestId)
+		`, contestId, contestId).Scan(&userStandings).Error
 		if err != nil {
 			errChan <- err
 		}
@@ -83,7 +83,7 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Select(&userProblems, `
+		err := h.db.Raw(`
 			SELECT 
 				user_id,
 				problem_id,
@@ -94,9 +94,9 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 				attempt_count,
 				first_blood
 			FROM contest_user_problems
-			WHERE contest_id = $1
+			WHERE contest_id = ?
 			ORDER BY user_id, problem_index
-		`, contestId)
+		`, contestId).Scan(&userProblems).Error
 		if err != nil {
 			errChan <- err
 		}

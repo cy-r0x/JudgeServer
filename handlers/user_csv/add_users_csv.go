@@ -7,7 +7,9 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -125,44 +127,66 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Insert all users in a single transaction
-	trx, err := h.db.Beginx()
-	if err != nil {
+	trx := h.db.Begin()
+	if trx.Error != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "error starting transaction")
 		return
 	}
-	defer trx.Rollback()
 
-	query := `
-		INSERT INTO users (full_name, username, password, clan, room_no, pc_no, role, allowed_contest)
-		VALUES ($1,$2, $3, $4, $5, $6, $7, $8) RETURNING id;
-	`
+	defer func() {
+		if r := recover(); r != nil {
+			trx.Rollback()
+		}
+	}()
 
 	for _, user := range users {
-
 		err = h.WriteUser(user)
 		if err != nil {
+			trx.Rollback()
 			utils.SendResponse(w, http.StatusInternalServerError, "error writing user to CSV")
 			return
 		}
 
-		// Password already hashed in parallel goroutines above
-		_, err = trx.Exec(query, user.FullName, user.Username, user.Password, user.Clan, user.RoomNo, user.PcNo, user.Role, user.AllowedContest)
-		if err != nil {
+		var allowedContest *uint
+		if user.AllowedContest != nil {
+			ac := uint(*user.AllowedContest)
+			allowedContest = &ac
+		}
+
+		newUser := models.User{
+			FullName:       user.FullName,
+			Username:       user.Username,
+			Password:       user.Password,
+			Role:           user.Role,
+			AllowedContest: allowedContest,
+			Clan:           user.Clan,
+			RoomNo:         user.RoomNo,
+			PcNo:           user.PcNo,
+			CreatedAt:      time.Now(),
+		}
+
+		if err := trx.Create(&newUser).Error; err != nil {
+			trx.Rollback()
 			utils.SendResponse(w, http.StatusInternalServerError, "error registering user")
 			return
 		}
 	}
 
-	query = `INSERT INTO filepath (contest_id, file_path) VALUES ($1, $2)`
-	_, err = trx.Exec(query, contestIdInt, h.Writer.FilePath)
-	if err != nil {
+	filePathEntry := models.Filepath{
+		ContestID: uint(contestIdInt),
+		FilePath:  h.Writer.FilePath,
+	}
+
+	if err := trx.Create(&filePathEntry).Error; err != nil {
+		trx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "error saving file path")
 		return
 	}
 
-	if err := trx.Commit(); err != nil {
+	if err := trx.Commit().Error; err != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "error committing transaction")
 		return
 	}
+
 	utils.SendResponse(w, http.StatusOK, "Users added successfully")
 }

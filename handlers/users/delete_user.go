@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -17,23 +18,14 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `DELETE FROM users WHERE id = $1`
-
-	result, err := h.db.Exec(query, userIdInt)
-	if err != nil {
-		log.Println(err)
+	result := h.db.Delete(&models.User{}, userIdInt)
+	if result.Error != nil {
+		log.Println(result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete user")
 		return
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		log.Println(err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify deletion")
-		return
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		utils.SendResponse(w, http.StatusNotFound, "User not found")
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -15,31 +16,31 @@ func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.db.Begin()
-	if err != nil {
+	tx := h.db.Begin()
+	if tx.Error != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to start transaction")
 		return
 	}
-
-	query := `UPDATE contest_problems 
-	          SET index = $1
-	          WHERE contest_id = $2 AND problem_id = $3`
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	totalRowsAffected := int64(0)
 
 	for _, contestProblem := range contestProblems {
-		result, err := tx.Exec(query,
-			contestProblem.Index,
-			contestProblem.ContestId,
-			contestProblem.ProblemId)
-		if err != nil {
+		result := tx.Model(&models.ContestProblem{}).
+			Where("contest_id = ? AND problem_id = ?", contestProblem.ContestId, contestProblem.ProblemId).
+			Update("index", contestProblem.Index)
+
+		if result.Error != nil {
 			tx.Rollback()
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem index")
 			return
 		}
 
-		rows, _ := result.RowsAffected()
-		totalRowsAffected += rows
+		totalRowsAffected += result.RowsAffected
 	}
 
 	if totalRowsAffected == 0 {
@@ -48,7 +49,8 @@ func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}

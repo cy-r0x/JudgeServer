@@ -4,8 +4,10 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -28,21 +30,15 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	switch payload.Role {
 	case "user":
 		// Check if the user has access to this problem through their allowed contest
-		var exists bool
-		err := h.db.Get(&exists, `
-			SELECT EXISTS (
-				SELECT 1 FROM contest_problems cp
-				WHERE cp.problem_id = $1 AND cp.contest_id = $2
-			)
-		`, problemId, payload.AllowedContest)
-
+		var count int64
+		err := h.db.Model(&models.ContestProblem{}).Where("problem_id = ? AND contest_id = ?", problemId, payload.AllowedContest).Count(&count).Error
 		if err != nil {
 			log.Println("Error checking problem access:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem access")
 			return
 		}
 
-		if !exists {
+		if count == 0 {
 			utils.SendResponse(w, http.StatusForbidden, "You don't have access to this problem")
 			return
 		}
@@ -50,18 +46,15 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		// Fall through to fetch problem data
 	case "setter":
 		// Check if the problem was created by this setter
-		var createdBy int64
-		err := h.db.Get(&createdBy, `
-			SELECT created_by FROM problems WHERE id = $1
-		`, problemId)
-
+		var createdBy *uint
+		err := h.db.Model(&models.Problem{}).Select("created_by").Where("id = ?", problemId).Scan(&createdBy).Error
 		if err != nil {
 			log.Println("Error checking problem creator:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem creator")
 			return
 		}
 
-		if createdBy != payload.Sub {
+		if createdBy == nil || *createdBy != uint(payload.Sub) {
 			utils.SendResponse(w, http.StatusForbidden, "You don't have access to this problem")
 			return
 		}
@@ -73,23 +66,79 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusForbidden, "Invalid role")
 		return
 	}
+
 	if payload.Role == "user" {
-		err := h.db.Get(&problem, `
-		SELECT p.*, c.start_time, c.duration_seconds FROM problems p INNER JOIN contest_problems cp ON p.id = cp.problem_id INNER JOIN contests c ON cp.contest_id = c.id WHERE p.id = $1
-	`, problemId)
+		type DBResult struct {
+			models.Problem
+			StartTime       *time.Time `gorm:"column:start_time"`
+			DurationSeconds *int64     `gorm:"column:duration_seconds"`
+		}
+		var result DBResult
+
+		err := h.db.Raw(`
+			SELECT p.*, c.start_time, c.duration_seconds 
+			FROM problems p 
+			INNER JOIN contest_problems cp ON p.id = cp.problem_id 
+			INNER JOIN contests c ON cp.contest_id = c.id 
+			WHERE p.id = ?`, problemId).Scan(&result).Error
+
+		if err != nil || result.ID == 0 {
+			log.Println("Error fetching problem:", err)
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
+			return
+		}
+
+		createdBy := int64(0)
+		if result.CreatedByID != nil {
+			createdBy = int64(*result.CreatedByID)
+		}
+
+		problem = Problem{
+			Id:                 int64(result.ID),
+			Title:              result.Title,
+			Slug:               result.Slug,
+			Statement:          result.Statement,
+			InputStatement:     result.InputStatement,
+			OutputStatement:    result.OutputStatement,
+			TimeLimit:          float32(result.TimeLimit),
+			MemoryLimit:        float32(result.MemoryLimit),
+			CheckerType:        result.CheckerType,
+			CheckerStrictSpace: result.CheckerStrictSpace,
+			CheckerPrecision:   result.CheckerPrecision,
+			StartTime:          result.StartTime,
+			DurationSeconds:    result.DurationSeconds,
+			CreatedBy:          createdBy,
+			CreatedAt:          result.CreatedAt,
+		}
+
+	} else {
+		var dbProblem models.Problem
+		err := h.db.Where("id = ?", problemId).First(&dbProblem).Error
 		if err != nil {
 			log.Println("Error fetching problem:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
 			return
 		}
-	} else {
-		err := h.db.Get(&problem, `
-		SELECT * FROM problems WHERE id = $1
-	`, problemId)
-		if err != nil {
-			log.Println("Error fetching problem:", err)
-			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
-			return
+
+		createdBy := int64(0)
+		if dbProblem.CreatedByID != nil {
+			createdBy = int64(*dbProblem.CreatedByID)
+		}
+
+		problem = Problem{
+			Id:                 int64(dbProblem.ID),
+			Title:              dbProblem.Title,
+			Slug:               dbProblem.Slug,
+			Statement:          dbProblem.Statement,
+			InputStatement:     dbProblem.InputStatement,
+			OutputStatement:    dbProblem.OutputStatement,
+			TimeLimit:          float32(dbProblem.TimeLimit),
+			MemoryLimit:        float32(dbProblem.MemoryLimit),
+			CheckerType:        dbProblem.CheckerType,
+			CheckerStrictSpace: dbProblem.CheckerStrictSpace,
+			CheckerPrecision:   dbProblem.CheckerPrecision,
+			CreatedBy:          createdBy,
+			CreatedAt:          dbProblem.CreatedAt,
 		}
 	}
 
@@ -117,15 +166,14 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			defer wg.Done()
 			var ls LastSubmissionData
-			err := h.db.Get(&ls, `
-				SELECT source_code, language 
-				FROM submissions 
-				WHERE user_id = $1 AND problem_id = $2 
-				ORDER BY submitted_at DESC 
-				LIMIT 1
-			`, payload.Sub, problemId)
+			err := h.db.Model(&models.Submission{}).
+				Select("source_code", "language").
+				Where("user_id = ? AND problem_id = ?", payload.Sub, problemId).
+				Order("submitted_at DESC").
+				Limit(1).
+				Scan(&ls).Error
 
-			if err == nil {
+			if err == nil && ls.SourceCode != "" {
 				lastSubmission = &ls
 			}
 		}()
@@ -133,6 +181,9 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
+	if testcases == nil {
+		testcases = []Testcase{}
+	}
 	problem.Testcases = testcases
 	problem.LastSubmission = lastSubmission
 

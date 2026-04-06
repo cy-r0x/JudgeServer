@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -16,8 +17,8 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle nullable execution time and memory values
-	var executionTime any
-	var memoryUsed any
+	var executionTime interface{}
+	var memoryUsed interface{}
 
 	if engineData.ExecutionTime != nil {
 		executionTime = *engineData.ExecutionTime
@@ -27,10 +28,18 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		memoryUsed = *engineData.ExecutionMemory
 	}
 
+	updates := map[string]interface{}{
+		"verdict": engineData.Verdict,
+	}
+	if executionTime != nil {
+		updates["execution_time"] = executionTime
+	}
+	if memoryUsed != nil {
+		updates["memory_used"] = memoryUsed
+	}
+
 	// Update the submission in the DB
-	query := `UPDATE submissions SET verdict=$1, execution_time=$2, memory_used=$3 WHERE id=$4`
-	_, err := h.db.Exec(query, engineData.Verdict, executionTime, memoryUsed, engineData.SubmissionId)
-	if err != nil {
+	if err := h.db.Model(&models.Submission{}).Where("id = ?", engineData.SubmissionId).Updates(updates).Error; err != nil {
 		log.Println("DB Update Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update submission")
 		return
@@ -43,5 +52,5 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		h.updateStandingsForNonAccepted(engineData.SubmissionId, engineData.Verdict)
 	}
 
-	utils.SendResponse(w, http.StatusOK, map[string]any{"message": "Submission updated"})
+	utils.SendResponse(w, http.StatusOK, map[string]interface{}{"message": "Submission updated"})
 }

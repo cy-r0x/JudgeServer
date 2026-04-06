@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -33,22 +34,29 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get Contest Information
-	var contest Contest
-	query := `SELECT id, title, description, start_time, duration_seconds, created_at 
-			 FROM contests WHERE id = $1`
-
-	err := h.db.QueryRow(query, contestId).Scan(
-		&contest.Id,
-		&contest.Title,
-		&contest.Description,
-		&contest.StartTime,
-		&contest.DurationSeconds,
-		&contest.CreatedAt,
-	)
+	var dbContest models.Contest
+	err := h.db.
+		Select("id", "title", "description", "start_time", "duration_seconds", "created_at").
+		Where("id = ?", contestId).
+		First(&dbContest).Error
 
 	if err != nil {
 		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found")
 		return
+	}
+
+	description := ""
+	if dbContest.Description != nil {
+		description = *dbContest.Description
+	}
+
+	contest := Contest{
+		Id:              int64(dbContest.ID),
+		Title:           dbContest.Title,
+		Description:     description,
+		StartTime:       dbContest.StartTime,
+		DurationSeconds: dbContest.DurationSeconds,
+		CreatedAt:       dbContest.CreatedAt,
 	}
 
 	// Calculate contest status
@@ -78,9 +86,10 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 	if contest.Status != "UPCOMING" {
 		// Optimized query using pre-aggregated stats
+		// Note: GORM Raw querying is used for complex joins with COALESCE and dynamic parameter checking.
 		problemsQuery := `
 			SELECT 
-				cp.problem_id, 
+				cp.problem_id as id, 
 				p.title, 
 				p.slug, 
 				cp.index,
@@ -92,37 +101,30 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN contest_problem_stats cps ON cps.contest_id = cp.contest_id AND cps.problem_id = cp.problem_id
 			LEFT JOIN contest_user_problems cup ON cup.contest_id = cp.contest_id 
 				AND cup.problem_id = cp.problem_id 
-				AND cup.user_id = $2
-			WHERE cp.contest_id = $1
+				AND cup.user_id = @userId
+			WHERE cp.contest_id = @contestId
 			ORDER BY cp.index
 		`
 
-		var rows *sql.Rows
-		var err error
-
+		var uId sql.NullInt64
 		if userId != nil {
-			rows, err = h.db.Query(problemsQuery, contestId, *userId)
+			uId = sql.NullInt64{Int64: *userId, Valid: true}
 		} else {
-			// For unauthenticated users, pass NULL for user_id
-			rows, err = h.db.Query(problemsQuery, contestId, nil)
+			uId = sql.NullInt64{Valid: false}
 		}
 
+		err = h.db.Raw(problemsQuery, sql.Named("contestId", contestId), sql.Named("userId", uId)).Scan(&problems).Error
 		if err != nil {
 			log.Println("Error fetching contest problems:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems")
 			return
 		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var problem Problem
-			if err := rows.Scan(&problem.Id, &problem.Title, &problem.Slug, &problem.Index, &problem.Solved, &problem.Attempted, &problem.TotalSolvers); err != nil {
-				utils.SendResponse(w, http.StatusInternalServerError, "Error parsing problem data")
-				return
-			}
-			problems = append(problems, problem)
-		}
 	}
+
+	if problems == nil {
+		problems = []Problem{}
+	}
+
 	// Prepare response with both contest and problems information
 	response := struct {
 		Contest  Contest   `json:"contest"`

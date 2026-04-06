@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -16,19 +17,21 @@ func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 	}
 	setterId := payload.Sub
 
-	problems := []Problem{}
-	query := `
-		SELECT id, title, created_at
-		FROM problems
-		WHERE created_by = $1
-		ORDER BY created_at DESC
-	`
+	var problems []Problem
+	err := h.db.Model(&models.Problem{}).
+		Select("id", "title", "created_at").
+		Where("created_by = ?", setterId).
+		Order("created_at DESC").
+		Scan(&problems).Error
 
-	err := h.db.Select(&problems, query, setterId)
 	if err != nil {
 		log.Println("Error fetching setter problems:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problems")
 		return
+	}
+
+	if problems == nil {
+		problems = []Problem{}
 	}
 
 	utils.SendResponse(w, http.StatusOK, problems)

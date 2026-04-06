@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,9 +25,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// fetch user from DB
-	var dbUser User
-	query := `SELECT id, full_name, username, password, role, clan, room_no, pc_no, allowed_contest FROM users WHERE username=$1 LIMIT 1`
-	err := h.db.Get(&dbUser, query, creds.Username)
+	var dbUser models.User
+	err := h.db.
+		Select("id", "full_name", "username", "password", "role", "clan", "room_no", "pc_no", "allowed_contest").
+		Where("username = ?", creds.Username).
+		First(&dbUser).Error
+
 	if err != nil {
 		utils.SendResponse(w, http.StatusUnauthorized, "Invalid username or password")
 		return
@@ -37,16 +41,22 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var allowedContest *int64
+	if dbUser.AllowedContest != nil {
+		ac := int64(*dbUser.AllowedContest)
+		allowedContest = &ac
+	}
+
 	// build payload
 	payload := &Payload{
-		Sub:            dbUser.Id,
+		Sub:            int64(dbUser.ID),
 		FullName:       dbUser.FullName,
 		Username:       dbUser.Username,
 		Clan:           dbUser.Clan,
 		Role:           dbUser.Role,
 		RoomNo:         dbUser.RoomNo,
 		PcNo:           dbUser.PcNo,
-		AllowedContest: dbUser.AllowedContest,
+		AllowedContest: allowedContest,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(3 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

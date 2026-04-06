@@ -32,7 +32,7 @@ func Serve() {
 		os.Exit(1)
 	}
 
-	err = db.Migrate(dbConn, "./schema")
+	err = db.Migrate(dbConn)
 	if err != nil {
 		os.Exit(1)
 	}

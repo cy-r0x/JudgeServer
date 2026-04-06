@@ -1,13 +1,17 @@
 package setter
 
-import "github.com/jmoiron/sqlx"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Problem struct {
-	Id        int64  `json:"id" db:"id"`
-	Title     string `json:"title" db:"title"`
-	CreatedAt string `json:"created_at" db:"created_at"`
+	Id        int64     `json:"id" gorm:"column:id"`
+	Title     string    `json:"title" gorm:"column:title"`
+	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
 }
 
 type Handler struct {
-	db *sqlx.DB
+	db *gorm.DB
 }

@@ -1,23 +1,28 @@
 package compilerun
 
-import "log"
+import (
+	"log"
+
+	"github.com/judgenot0/judge-backend/models"
+)
 
 func (h *Handler) fetchTestcases(problemId int64, isSample bool) ([]Testcase, error) {
-	query := `
-		SELECT input, expected_output
-		FROM testcases
-		WHERE problem_id = $1`
+	query := h.db.Model(&models.Testcase{}).Select("input", "expected_output").Where("problem_id = ?", problemId)
 
 	if isSample {
-		query += ` AND is_sample = TRUE`
+		query = query.Where("is_sample = ?", true)
 	}
 
-	query += ` ORDER BY is_sample DESC, id ASC`
+	query = query.Order("is_sample DESC, id ASC")
 
 	var testcases []Testcase
-	if err := h.db.Select(&testcases, query, problemId); err != nil {
+	if err := query.Scan(&testcases).Error; err != nil {
 		log.Println(err)
 		return nil, err
+	}
+
+	if testcases == nil {
+		testcases = []Testcase{}
 	}
 
 	return testcases, nil

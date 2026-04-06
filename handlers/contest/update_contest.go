@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -18,21 +19,28 @@ func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
 
 	contest.StartTime = contest.StartTime.UTC()
 
-	query := `UPDATE contests 
-			 SET title = $1, description = $2, start_time = $3, duration_seconds = $4
-			 WHERE id = $5 RETURNING created_at`
+	var description *string
+	if contest.Description != "" {
+		description = &contest.Description
+	}
 
-	err = h.db.QueryRow(query,
-		contest.Title,
-		contest.Description,
-		contest.StartTime,
-		contest.DurationSeconds,
-		contest.Id).Scan(&contest.CreatedAt)
+	updateData := models.Contest{
+		Title:           contest.Title,
+		Description:     description,
+		StartTime:       contest.StartTime,
+		DurationSeconds: contest.DurationSeconds,
+	}
 
-	if err != nil {
+	result := h.db.Model(&models.Contest{}).Where("id = ?", contest.Id).Updates(updateData)
+	if result.Error != nil || result.RowsAffected == 0 {
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update contest")
 		return
 	}
+
+	var updatedContest models.Contest
+	h.db.First(&updatedContest, contest.Id)
+
+	contest.CreatedAt = updatedContest.CreatedAt
 
 	utils.SendResponse(w, http.StatusOK, contest)
 }

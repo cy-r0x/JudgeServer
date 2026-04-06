@@ -1,24 +1,39 @@
 package problem
 
-import "log"
+import (
+	"log"
+
+	"github.com/judgenot0/judge-backend/models"
+)
 
 func (h *Handler) fetchTestcases(problemId string, isSample bool) ([]Testcase, error) {
-	query := `
-		SELECT id, problem_id, input, expected_output, is_sample, created_at
-		FROM testcases
-		WHERE problem_id = $1`
-	args := []any{problemId}
+	var dbTestcases []models.Testcase
 
+	query := h.db.Where("problem_id = ?", problemId)
 	if isSample {
-		query += ` AND is_sample = TRUE`
+		query = query.Where("is_sample = ?", true)
 	}
 
-	query += ` ORDER BY is_sample DESC, id ASC`
-
-	var testcases []Testcase
-	if err := h.db.Select(&testcases, query, args...); err != nil {
+	err := query.Order("is_sample DESC, id ASC").Find(&dbTestcases).Error
+	if err != nil {
 		log.Println(err)
 		return nil, err
+	}
+
+	var testcases []Testcase
+	for _, tc := range dbTestcases {
+		testcases = append(testcases, Testcase{
+			Id:             int64(tc.ID),
+			ProblemId:      int64(tc.ProblemID),
+			Input:          tc.Input,
+			ExpectedOutput: tc.ExpectedOutput,
+			IsSample:       tc.IsSample,
+			CreatedAt:      tc.CreatedAt,
+		})
+	}
+
+	if testcases == nil {
+		testcases = []Testcase{}
 	}
 
 	return testcases, nil

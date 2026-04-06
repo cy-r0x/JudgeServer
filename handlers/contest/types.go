@@ -3,8 +3,8 @@ package contest
 import (
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
+	"gorm.io/gorm"
 )
 
 type Contest struct {
@@ -24,6 +24,6 @@ type ContestProblem struct {
 }
 
 type Handler struct {
-	db     *sqlx.DB
+	db     *gorm.DB
 	config *config.Config
 }

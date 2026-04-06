@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -34,7 +34,10 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var problem Problem
-	err := h.db.Get(&problem, `SELECT time_limit, memory_limit,checker_type, checker_strict_space, checker_precision FROM problems WHERE id=$1`, submission.ProblemId)
+	err := h.db.Model(&models.Problem{}).
+		Select("time_limit", "memory_limit", "checker_type", "checker_strict_space", "checker_precision").
+		Where("id = ?", submission.ProblemId).
+		Scan(&problem).Error
 
 	if err != nil {
 		log.Printf("Error fetching problem details: %v", err)
@@ -56,8 +59,6 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	problem.SourceCode = submission.SourceCode
 	problem.Language = submission.Language
 	problem.Testcases = testcases
-
-	fmt.Println(problem)
 
 	url := h.config.EngineUrl + "/run"
 

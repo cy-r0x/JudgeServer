@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
+	"gorm.io/gorm"
 )
 
 type UserCreds struct {
@@ -48,5 +48,5 @@ type User struct {
 
 type Handler struct {
 	config *config.Config
-	db     *sqlx.DB
+	db     *gorm.DB
 }

@@ -6,60 +6,66 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	var reqUser User
+	if err := json.NewDecoder(r.Body).Decode(&reqUser); err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	// basic validation
-	if user.Username == "" || user.Password == "" {
+	if reqUser.Username == "" || reqUser.Password == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "username and password are required")
 		return
 	}
 
 	// hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(reqUser.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Println(err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
-	user.Password = string(hashedPassword)
-	user.CreatedAt = time.Now()
 
-	// default role if not provided
-	if user.Role == "" {
-		user.Role = "user"
+	var allowedContest *uint
+	if reqUser.AllowedContest != nil {
+		ac := uint(*reqUser.AllowedContest)
+		allowedContest = &ac
 	}
 
-	// insert into DB
-	query := `
-		INSERT INTO users (full_name, username, password, clan, room_no, pc_no, role, allowed_contest, created_at)
-		VALUES (:full_name,:username, :password, :clan, :room_no, :pc_no, :role, :allowed_contest, :created_at);
-	`
+	role := reqUser.Role
+	if role == "" {
+		role = "user"
+	}
 
-	rows, err := h.db.NamedQuery(query, user)
+	newUser := models.User{
+		FullName:       reqUser.FullName,
+		Username:       reqUser.Username,
+		Password:       string(hashedPassword),
+		Role:           role,
+		Clan:           reqUser.Clan,
+		RoomNo:         reqUser.RoomNo,
+		PcNo:           reqUser.PcNo,
+		AllowedContest: allowedContest,
+		CreatedAt:      time.Now(),
+	}
+
+	err = h.db.Create(&newUser).Error
 	if err != nil {
+		log.Println("DB Create Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
-	defer rows.Close()
 
-	if rows.Next() {
-		if err := rows.Scan(&user.Id); err != nil {
-			utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
-			return
-		}
-	}
+	reqUser.Id = int64(newUser.ID)
+	reqUser.Password = ""
+	reqUser.Role = newUser.Role
+	reqUser.CreatedAt = newUser.CreatedAt
 
-	// don't send password back
-	user.Password = ""
-
-	utils.SendResponse(w, http.StatusCreated, user)
+	utils.SendResponse(w, http.StatusCreated, reqUser)
 }

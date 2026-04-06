@@ -1,6 +1,10 @@
 package usercsv
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/judgenot0/judge-backend/models"
+)
 
 func (h *Handler) GetCSV(w http.ResponseWriter, r *http.Request) {
 	contestId := r.URL.Query().Get("contestId")
@@ -9,13 +13,12 @@ func (h *Handler) GetCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `SELECT file_path FROM filepath WHERE contest_id = $1`
-	var filePath string
-	err := h.db.QueryRow(query, contestId).Scan(&filePath)
+	var filepathObj models.Filepath
+	err := h.db.Where("contest_id = ?", contestId).First(&filepathObj).Error
 	if err != nil {
 		http.Error(w, "error fetching file path", http.StatusInternalServerError)
 		return
 	}
 
-	http.ServeFile(w, r, filePath)
+	http.ServeFile(w, r, filepathObj.FilePath)
 }

@@ -39,7 +39,7 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 	// Optimized single query with window function for count
 	type SubmissionWithCount struct {
 		Submission
-		TotalCount int `db:"total_count"`
+		TotalCount int `gorm:"column:total_count"`
 	}
 
 	var results []SubmissionWithCount
@@ -52,23 +52,21 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 		FROM submissions sub 
 		LEFT JOIN users u ON sub.user_id = u.id
 		LEFT JOIN contest_problems cp ON sub.contest_id = cp.contest_id AND sub.problem_id = cp.problem_id
-		WHERE sub.contest_id=$1
+		WHERE sub.contest_id = ?
 	`
 
-	if verdictFilter != "" {
-		query += " AND sub.verdict=$2"
-		query += " ORDER BY sub.submitted_at DESC LIMIT $3 OFFSET $4"
-	} else {
-		query += " ORDER BY sub.submitted_at DESC LIMIT $2 OFFSET $3"
-	}
+	var args []interface{}
+	args = append(args, contestId)
 
 	if verdictFilter != "" {
-		err = h.db.Select(&results, query, contestId, verdictFilter, limit, offset)
-	} else {
-		err = h.db.Select(&results, query, contestId, limit, offset)
+		query += " AND sub.verdict = ?"
+		args = append(args, verdictFilter)
 	}
 
-	if err != nil {
+	query += " ORDER BY sub.submitted_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	if err := h.db.Raw(query, args...).Scan(&results).Error; err != nil {
 		log.Println("DB Query Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch submissions")
 		return
@@ -76,9 +74,14 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 
 	var submissions []Submission
 	totalCount := 0
+
 	for _, r := range results {
 		submissions = append(submissions, r.Submission)
 		totalCount = r.TotalCount
+	}
+
+	if len(submissions) == 0 {
+		submissions = []Submission{}
 	}
 
 	response := struct {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -38,7 +39,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 
 	// Check if problem exists
 	var problemExists bool
-	if err := h.db.Get(&problemExists, `SELECT EXISTS(SELECT 1 FROM problems WHERE id=$1)`, submission.ProblemId); err != nil {
+	if err := h.db.Model(&models.Problem{}).Select("1").Where("id = ?", submission.ProblemId).Find(&problemExists).Error; err != nil {
 		log.Println("Failed to check problem existence:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
 		return
@@ -49,12 +50,8 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if contest exists and get contest timing information
-	var contest struct {
-		StartTime       time.Time `db:"start_time"`
-		DurationSeconds int       `db:"duration_seconds"`
-	}
-	err := h.db.Get(&contest, `SELECT start_time, duration_seconds FROM contests WHERE id=$1`, submission.ContestId)
-	if err != nil {
+	var contest models.Contest
+	if err := h.db.Select("start_time", "duration_seconds").Where("id = ?", submission.ContestId).First(&contest).Error; err != nil {
 		log.Println("Failed to get contest details:", err)
 		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist")
 		return
@@ -75,18 +72,20 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var problem Problem
-	if err := h.db.Get(&problem, `SELECT p.time_limit, p.memory_limit, p.checker_type, p.checker_strict_space, p.checker_precision FROM problems p WHERE id=$1`, submission.ProblemId); err != nil {
+	if err := h.db.Model(&models.Problem{}).
+		Select("time_limit", "memory_limit", "checker_type", "checker_strict_space", "checker_precision").
+		Where("id = ?", submission.ProblemId).
+		First(&problem).Error; err != nil {
 		log.Println("Failed to fetch problem details:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
 		return
 	}
 
 	var testcases []Testcase
-	if err := h.db.Select(&testcases, `
-		SELECT input, expected_output
-		FROM testcases
-		WHERE problem_id=$1
-	`, submission.ProblemId); err != nil {
+	if err := h.db.Model(&models.Testcase{}).
+		Select("input", "expected_output").
+		Where("problem_id = ?", submission.ProblemId).
+		Find(&testcases).Error; err != nil {
 		log.Println("Failed to fetch testcases:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
 		return
@@ -96,7 +95,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 
 	// Check if problem is assigned to the contest
 	var problemInContest bool
-	if err := h.db.Get(&problemInContest, `SELECT EXISTS(SELECT 1 FROM contest_problems WHERE contest_id=$1 AND problem_id=$2)`, submission.ContestId, submission.ProblemId); err != nil {
+	if err := h.db.Model(&models.ContestProblem{}).Select("1").Where("contest_id = ? AND problem_id = ?", submission.ContestId, submission.ProblemId).Find(&problemInContest).Error; err != nil {
 		log.Println("Failed to check problem assignment:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission")
 		return
@@ -106,36 +105,46 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.db.Begin()
-	if err != nil {
+	tx := h.db.Begin()
+	if tx.Error != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to start transaction")
 		return
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	query := `INSERT INTO submissions (user_id, username, problem_id, contest_id, language, source_code) 
-	          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	contestID := uint(submission.ContestId)
+	newSubmission := models.Submission{
+		UserID:     uint(userId),
+		Username:   username,
+		ProblemID:  uint(submission.ProblemId),
+		ContestID:  &contestID,
+		Language:   submission.Language,
+		SourceCode: submission.SourceCode,
+	}
 
-	err = tx.QueryRow(query, userId, username, submission.ProblemId, submission.ContestId, submission.Language, submission.SourceCode).Scan(&problem.SubmissionId)
-	if err != nil {
+	if err := tx.Create(&newSubmission).Error; err != nil {
 		tx.Rollback()
 		log.Println("DB Insert Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create submission")
 		return
 	}
 
+	problem.SubmissionId = int64(newSubmission.ID)
 	problem.SourceCode = submission.SourceCode
 	problem.Language = submission.Language
 
-	err = h.submitToQueue(&problem)
-
-	if err != nil {
+	if err := h.submitToQueue(&problem); err != nil {
 		tx.Rollback()
 		log.Println("Queue Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to enqueue submission")
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		log.Println("Commit Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return

@@ -2,9 +2,6 @@ package submissions
 
 import (
 	"time"
-
-	"github.com/jmoiron/sqlx"
-	"github.com/judgenot0/judge-backend/config"
 )
 
 type Submission struct {
@@ -39,18 +36,12 @@ type Testcase struct {
 }
 
 type Problem struct {
-	SubmissionId       int64      `json:"submission_id"`
-	Language           string     `json:"language"`
-	SourceCode         string     `json:"source_code"`
+	SubmissionId       int64      `gorm:"-" json:"submission_id"`
+	Language           string     `gorm:"-" json:"language"`
+	SourceCode         string     `gorm:"-" json:"source_code"`
 	TimeLimit          float32    `json:"time_limit" db:"time_limit"`
 	MemoryLimit        float32    `json:"memory_limit" db:"memory_limit"`
-	Testcases          []Testcase `json:"testcases"`
-	CheckerType        string     `json:"checker_type" db:"checker_type"`
+	Testcases          []Testcase `gorm:"-" json:"testcases"`
 	CheckerStrictSpace bool       `json:"checker_strict_space" db:"checker_strict_space"`
 	CheckerPrecision   *string    `json:"checker_precision" db:"checker_precision"`
-}
-
-type Handler struct {
-	db     *sqlx.DB
-	config *config.Config
 }

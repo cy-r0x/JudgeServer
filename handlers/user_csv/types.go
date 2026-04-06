@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -42,7 +42,7 @@ type WriterHandler struct {
 }
 
 type Handler struct {
-	db     *sqlx.DB
+	db     *gorm.DB
 	mu     sync.Mutex
 	Writer *WriterHandler
 }

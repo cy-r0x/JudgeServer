@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
 
 type ProblemStatus struct {
@@ -47,46 +47,46 @@ type StandingsResponse struct {
 }
 
 type ContestProblem struct {
-	ProblemId int64  `db:"problem_id"`
-	Index     int    `db:"index"`
-	Title     string `db:"title"`
+	ProblemId int64  `gorm:"column:problem_id"`
+	Index     int    `gorm:"column:index"`
+	Title     string `gorm:"column:title"`
 }
 
 type ContestInfo struct {
-	Title           string    `db:"title"`
-	StartTime       time.Time `db:"start_time"`
-	DurationSeconds int64     `db:"duration_seconds"`
+	Title           string    `gorm:"column:title"`
+	StartTime       time.Time `gorm:"column:start_time"`
+	DurationSeconds int64     `gorm:"column:duration_seconds"`
 }
 
 type userStandingRow struct {
-	UserId       int64        `db:"user_id"`
-	Username     string       `db:"username"`
-	FullName     string       `db:"full_name"`
-	Clan         *string      `db:"clan"`
-	SolvedCount  int          `db:"solved_count"`
-	TotalPenalty int          `db:"penalty"`
-	LastSolvedAt sql.NullTime `db:"last_solved_at"`
+	UserId       int64        `gorm:"column:user_id"`
+	Username     string       `gorm:"column:username"`
+	FullName     string       `gorm:"column:full_name"`
+	Clan         *string      `gorm:"column:clan"`
+	SolvedCount  int          `gorm:"column:solved_count"`
+	TotalPenalty int          `gorm:"column:penalty"`
+	LastSolvedAt sql.NullTime `gorm:"column:last_solved_at"`
 }
 
 type userProblemRow struct {
-	UserId       int64        `db:"user_id"`
-	ProblemId    int64        `db:"problem_id"`
-	ProblemIndex int          `db:"problem_index"`
-	IsSolved     bool         `db:"is_solved"`
-	SolvedAt     sql.NullTime `db:"solved_at"`
-	Penalty      int          `db:"penalty"`
-	AttemptCount int          `db:"attempt_count"`
-	FirstBlood   bool         `db:"first_blood"`
+	UserId       int64        `gorm:"column:user_id"`
+	ProblemId    int64        `gorm:"column:problem_id"`
+	ProblemIndex int          `gorm:"column:problem_index"`
+	IsSolved     bool         `gorm:"column:is_solved"`
+	SolvedAt     sql.NullTime `gorm:"column:solved_at"`
+	Penalty      int          `gorm:"column:penalty"`
+	AttemptCount int          `gorm:"column:attempt_count"`
+	FirstBlood   bool         `gorm:"column:first_blood"`
 }
 
 type problemStatsRow struct {
-	ProblemIndex   int `db:"problem_index"`
-	SolvedCount    int `db:"solved_count"`
-	AttemptedUsers int `db:"attempted_users"`
+	ProblemIndex   int `gorm:"column:problem_index"`
+	SolvedCount    int `gorm:"column:solved_count"`
+	AttemptedUsers int `gorm:"column:attempted_users"`
 }
 
 type Handler struct {
-	db             *sqlx.DB
+	db             *gorm.DB
 	mu             sync.RWMutex
 	Last_standings map[int64]struct {
 		timestamp *time.Time

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -19,13 +20,13 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if contest exists
-	var contestExists bool
-	if err = h.db.Get(&contestExists, `SELECT EXISTS(SELECT 1 FROM contests WHERE id=$1)`, contestIdInt); err != nil {
+	var countContest int64
+	if err = h.db.Model(&models.Contest{}).Where("id = ?", contestIdInt).Count(&countContest).Error; err != nil {
 		log.Println("Failed to check contest existence:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems")
 		return
 	}
-	if !contestExists {
+	if countContest == 0 {
 		utils.SendResponse(w, http.StatusNotFound, "Contest does not exist")
 		return
 	}
@@ -42,14 +43,18 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 		FROM contest_problems cp
 		JOIN problems p ON cp.problem_id = p.id
 		LEFT JOIN users u ON p.created_by = u.id
-		WHERE cp.contest_id = $1
+		WHERE cp.contest_id = ?
 		ORDER BY cp.index ASC
 	`
 
-	if err = h.db.Select(&contestProblems, query, contestIdInt); err != nil {
+	if err = h.db.Raw(query, contestIdInt).Scan(&contestProblems).Error; err != nil {
 		log.Println("Failed to get contest problems:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems")
 		return
+	}
+
+	if contestProblems == nil {
+		contestProblems = []ContestProblem{}
 	}
 
 	utils.SendResponse(w, http.StatusOK, contestProblems)

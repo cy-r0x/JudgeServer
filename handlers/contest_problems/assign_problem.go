@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -22,21 +23,21 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check if contest exists
-	var contestExists bool
-	if err = h.db.Get(&contestExists, `SELECT EXISTS(SELECT 1 FROM contests WHERE id=$1)`, contestProblem.ContestId); err != nil {
+	var countContest int64
+	if err = h.db.Model(&models.Contest{}).Where("id = ?", contestProblem.ContestId).Count(&countContest).Error; err != nil {
 		log.Println("Failed to check contest existence:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
 		return
 	}
-	if !contestExists {
+	if countContest == 0 {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist")
 		return
 	}
 
-	// Get problem details and author information in a single optimized query
+	// Get problem details and author information in a single optimized query using GORM Joins
 	type ProblemDetails struct {
-		Title    string `db:"title"`
-		FullName string `db:"full_name"`
+		Title    string `gorm:"column:title"`
+		FullName string `gorm:"column:full_name"`
 	}
 
 	var problemDetails ProblemDetails
@@ -44,16 +45,16 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 		SELECT p.title, u.full_name 
 		FROM problems p 
 		LEFT JOIN users u ON p.created_by = u.id 
-		WHERE p.id = $1
+		WHERE p.id = ?
 	`
 
-	if err = h.db.Get(&problemDetails, query, contestProblem.ProblemId); err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			utils.SendResponse(w, http.StatusBadRequest, "Problem does not exist")
-			return
-		}
+	if err = h.db.Raw(query, contestProblem.ProblemId).Scan(&problemDetails).Error; err != nil {
 		log.Println("Failed to get problem details:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		return
+	}
+	if problemDetails.Title == "" {
+		utils.SendResponse(w, http.StatusBadRequest, "Problem does not exist")
 		return
 	}
 
@@ -61,48 +62,57 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	contestProblem.ProblemName = problemDetails.Title
 	contestProblem.ProblemAuthor = problemDetails.FullName
 
-	tx, err := h.db.Beginx()
-	if err != nil {
-		log.Println("Failed to begin transaction:", err)
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		log.Println("Failed to begin transaction:", tx.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
 		return
 	}
 	defer func() {
-		if err != nil {
+		if r := recover(); r != nil {
 			tx.Rollback()
 		}
 	}()
 
 	// Ensure the problem is not already assigned
-	var exists bool
-	if err = tx.Get(&exists, `SELECT EXISTS(SELECT 1 FROM contest_problems WHERE contest_id=$1 AND problem_id=$2)`, contestProblem.ContestId, contestProblem.ProblemId); err != nil {
+	var existsCount int64
+	if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ? AND problem_id = ?", contestProblem.ContestId, contestProblem.ProblemId).Count(&existsCount).Error; err != nil {
 		log.Println("Failed to check existing assignment:", err)
+		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
 		return
 	}
-	if exists {
+	if existsCount > 0 {
 		tx.Rollback()
 		utils.SendResponse(w, http.StatusConflict, "Problem already assigned to this contest")
 		return
 	}
 
 	// Count existing problems to determine next index
-	var count int
-	if err = tx.Get(&count, `SELECT COUNT(*) FROM contest_problems WHERE contest_id=$1`, contestProblem.ContestId); err != nil {
+	var count int64
+	if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ?", contestProblem.ContestId).Count(&count).Error; err != nil {
 		log.Println("Failed to count contest problems:", err)
+		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
 		return
 	}
 
-	contestProblem.Index = count + 1
+	contestProblem.Index = int(count) + 1
 
-	if _, err = tx.Exec(`INSERT INTO contest_problems (contest_id, problem_id, index) VALUES ($1, $2, $3)`, contestProblem.ContestId, contestProblem.ProblemId, contestProblem.Index); err != nil {
+	newCP := models.ContestProblem{
+		ContestID: uint(contestProblem.ContestId),
+		ProblemID: uint(contestProblem.ProblemId),
+		Index:     contestProblem.Index,
+	}
+
+	if err = tx.Create(&newCP).Error; err != nil {
 		log.Println("Failed to insert contest problem:", err)
+		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
 		return
 	}
 
-	if err = tx.Commit(); err != nil {
+	if err = tx.Commit().Error; err != nil {
 		log.Println("Failed to commit contest problem assignment:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
 		return

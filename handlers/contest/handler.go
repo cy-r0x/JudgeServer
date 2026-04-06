@@ -1,11 +1,11 @@
 package contest
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
+	"gorm.io/gorm"
 )
 
-func NewHandler(db *sqlx.DB, config *config.Config) *Handler {
+func NewHandler(db *gorm.DB, config *config.Config) *Handler {
 	return &Handler{
 		db:     db,
 		config: config,

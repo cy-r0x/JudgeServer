@@ -8,5 +8,4 @@ import (
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manager, middlewares *middlewares.Middlewares) {
 	mux.Handle("GET /api/setters/problems", manager.With(h.ListSetterProblems, middlewares.Authenticate, middlewares.AuthenticateSetter))
-
 }

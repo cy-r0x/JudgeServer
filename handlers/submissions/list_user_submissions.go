@@ -1,7 +1,6 @@
 package submissions
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -21,7 +20,6 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 
 	strLimit := r.URL.Query().Get("limit")
 	verdictFilter := r.URL.Query().Get("verdict")
-	fmt.Println(verdictFilter)
 
 	if strLimit != "" {
 		parsedLimit, err := strconv.Atoi(strLimit)
@@ -55,7 +53,7 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	// Optimized single query with window function for count
 	type SubmissionWithCount struct {
 		Submission
-		TotalCount int `db:"total_count"`
+		TotalCount int `gorm:"column:total_count"`
 	}
 
 	var results []SubmissionWithCount
@@ -67,19 +65,21 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 			COUNT(*) OVER() as total_count
 		FROM submissions sub
 		LEFT JOIN contest_problems cp ON sub.contest_id = cp.contest_id AND sub.problem_id = cp.problem_id
-		WHERE sub.user_id=$1 AND sub.contest_id=$2 
+		WHERE sub.user_id = ? AND sub.contest_id = ? 
 	`
 
+	var args []interface{}
+	args = append(args, userId, *contestId)
+
 	if verdictFilter != "" {
-		query += " AND verdict=$3"
-		query += " ORDER BY submitted_at DESC LIMIT $4 OFFSET $5"
-		err = h.db.Select(&results, query, userId, *contestId, verdictFilter, limit, offset)
-	} else {
-		query += " ORDER BY submitted_at DESC LIMIT $3 OFFSET $4"
-		err = h.db.Select(&results, query, userId, *contestId, limit, offset)
+		query += " AND sub.verdict = ?"
+		args = append(args, verdictFilter)
 	}
 
-	if err != nil {
+	query += " ORDER BY sub.submitted_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	if err := h.db.Raw(query, args...).Scan(&results).Error; err != nil {
 		log.Println("DB Query Error:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch submissions")
 		return
@@ -90,6 +90,10 @@ func (h *Handler) ListUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	for _, r := range results {
 		submissions = append(submissions, r.Submission)
 		totalCount = r.TotalCount
+	}
+
+	if len(submissions) == 0 {
+		submissions = []Submission{}
 	}
 
 	response := struct {

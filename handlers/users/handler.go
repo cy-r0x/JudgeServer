@@ -1,11 +1,11 @@
 package users
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
+	"gorm.io/gorm"
 )
 
-func NewHandler(config *config.Config, db *sqlx.DB) *Handler {
+func NewHandler(config *config.Config, db *gorm.DB) *Handler {
 	return &Handler{
 		config: config,
 		db:     db,

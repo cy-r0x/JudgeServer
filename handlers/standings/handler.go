@@ -3,10 +3,10 @@ package standings
 import (
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
 
-func NewHandler(db *sqlx.DB) *Handler {
+func NewHandler(db *gorm.DB) *Handler {
 	return &Handler{
 		db: db,
 		Last_standings: make(map[int64]struct {

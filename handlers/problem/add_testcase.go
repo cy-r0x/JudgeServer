@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
@@ -22,33 +23,22 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `INSERT INTO testcases 
-				(problem_id, input, expected_output, is_sample)
-				VALUES ($1, $2, $3, $4)
-				RETURNING id`
-
-	tx, err := h.db.Beginx()
-	if err != nil {
-		log.Println("Error starting transaction:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcase")
-		return
+	newTestcase := models.Testcase{
+		ProblemID:      uint(testcase.ProblemId),
+		Input:          testcase.Input,
+		ExpectedOutput: testcase.ExpectedOutput,
+		IsSample:       testcase.IsSample,
 	}
 
-	var testcase_id int64
-	err = tx.QueryRow(query, testcase.ProblemId, testcase.Input, testcase.ExpectedOutput, testcase.IsSample).Scan(&testcase_id)
+	err := h.db.Create(&newTestcase).Error
 	if err != nil {
-		tx.Rollback()
 		log.Println("Error creating testcase:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcase")
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
-		log.Println("Error committing transaction:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcase")
-		return
-	}
+	testcase.Id = int64(newTestcase.ID)
+	testcase.CreatedAt = newTestcase.CreatedAt
 
-	testcase.Id = testcase_id
 	utils.SendResponse(w, http.StatusOK, testcase)
 }

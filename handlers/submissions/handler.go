@@ -1,11 +1,16 @@
 package submissions
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/judgenot0/judge-backend/config"
+	"gorm.io/gorm"
 )
 
-func NewHandler(db *sqlx.DB, config *config.Config) *Handler {
+type Handler struct {
+	db     *gorm.DB
+	config *config.Config
+}
+
+func NewHandler(db *gorm.DB, config *config.Config) *Handler {
 	return &Handler{
 		db:     db,
 		config: config,

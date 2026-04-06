@@ -1,10 +1,10 @@
 package problem
 
 import (
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
 
-func NewHandler(db *sqlx.DB) *Handler {
+func NewHandler(db *gorm.DB) *Handler {
 	return &Handler{
 		db: db,
 	}

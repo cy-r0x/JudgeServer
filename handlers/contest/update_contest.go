@@ -24,11 +24,11 @@ func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
 		description = &contest.Description
 	}
 
-	updateData := models.Contest{
-		Title:           contest.Title,
-		Description:     description,
-		StartTime:       contest.StartTime,
-		DurationSeconds: contest.DurationSeconds,
+	updateData := map[string]interface{}{
+		"title":            contest.Title,
+		"description":      description,
+		"start_time":       contest.StartTime,
+		"duration_seconds": contest.DurationSeconds,
 	}
 
 	result := h.db.Model(&models.Contest{}).Where("id = ?", contest.Id).Updates(updateData)

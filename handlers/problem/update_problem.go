@@ -42,17 +42,17 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 
 	slug := strings.ReplaceAll(strings.ToLower(reqProblem.Title), " ", "-")
 
-	updateData := models.Problem{
-		Title:              reqProblem.Title,
-		Slug:               slug,
-		Statement:          reqProblem.Statement,
-		InputStatement:     reqProblem.InputStatement,
-		OutputStatement:    reqProblem.OutputStatement,
-		TimeLimit:          float64(reqProblem.TimeLimit),
-		MemoryLimit:        float64(reqProblem.MemoryLimit),
-		CheckerType:        reqProblem.CheckerType,
-		CheckerStrictSpace: reqProblem.CheckerStrictSpace,
-		CheckerPrecision:   reqProblem.CheckerPrecision,
+	updateData := map[string]interface{}{
+		"title":                reqProblem.Title,
+		"slug":                 slug,
+		"statement":            reqProblem.Statement,
+		"input_statement":      reqProblem.InputStatement,
+		"output_statement":     reqProblem.OutputStatement,
+		"time_limit":           float64(reqProblem.TimeLimit),
+		"memory_limit":         float64(reqProblem.MemoryLimit),
+		"checker_type":         reqProblem.CheckerType,
+		"checker_strict_space": reqProblem.CheckerStrictSpace,
+		"checker_precision":    reqProblem.CheckerPrecision,
 	}
 
 	result := h.db.Model(&models.Problem{}).Where("id = ?", reqProblem.Id).Updates(updateData)

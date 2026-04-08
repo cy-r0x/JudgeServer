@@ -1,4 +1,3 @@
-root@localhost:~/JudgeNot0/JudgeServer# cat Dockerfile 
 # Build stage
 FROM golang:1.25.4-alpine3.22 AS builder
 

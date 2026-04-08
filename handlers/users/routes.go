@@ -11,5 +11,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, manager *middlewares.Manage
 	mux.Handle("GET /api/users/setter", manager.With(h.GetSetters, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 	mux.Handle("POST /api/users/login", manager.With(h.Login))
 	mux.Handle("POST /api/users/register", manager.With(h.CreateUser, middlewares.Authenticate, middlewares.AuthenticateAdmin))
+	mux.Handle("GET /api/users/info/{userId}", manager.With(h.GetUser, middlewares.Authenticate))
+	mux.Handle("PATCH /api/users/{userId}", manager.With(h.UpdateUser, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 	mux.Handle("POST /api/users/delete/{userId}", manager.With(h.DeleteUser, middlewares.Authenticate, middlewares.AuthenticateAdmin))
 }

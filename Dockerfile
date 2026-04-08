@@ -1,3 +1,4 @@
+root@localhost:~/JudgeNot0/JudgeServer# cat Dockerfile 
 # Build stage
 FROM golang:1.25.4-alpine3.22 AS builder
 
@@ -29,14 +30,13 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/judgeserver .
 
-# Copy schema files for migrations
-COPY --from=builder /build/schema ./schema
+# Copy schema files for migrations COPY --from=builder /build/schema ./schema
 
 # Copy .env file
 COPY .env .env
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8000
 
 # Run the application
 CMD ["./judgeserver"]

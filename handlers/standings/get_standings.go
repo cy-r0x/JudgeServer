@@ -32,12 +32,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
 		return
 	}
-
-	contestId, err := strconv.ParseInt(contestIdStr, 10, 64)
-	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
-		return
-	}
+	contestId := contestIdStr
 
 	currentTime := time.Now()
 
@@ -81,15 +76,18 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	var errChan = make(chan error, 5)
 
 	// Query 1: Fetch contest info
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		err := h.db.Raw(`SELECT title, start_time, duration_seconds FROM contests WHERE id = ?`, contestId).Scan(&contestInfo).Error
 		if err != nil {
 			errChan <- err
 		}
-	})
+	}()
 
 	// Query 2: Fetch contest problems
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
 		defer wg.Done()
 		err := h.db.Raw(`
 			SELECT cp.problem_id, cp.index, p.title
@@ -101,10 +99,12 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	})
+	}()
 
 	// Query 3: Fetch user standings
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		err := h.db.Raw(`
 			SELECT 
 				u.id AS user_id,
@@ -126,10 +126,12 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	})
+	}()
 
 	// Query 4: Fetch user-problem details
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		err := h.db.Raw(`
 			SELECT 
 				user_id,
@@ -147,10 +149,12 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	})
+	}()
 
 	// Query 5: Fetch problem statistics
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		err := h.db.Raw(`
 			SELECT 
 				problem_index,
@@ -163,7 +167,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	})
+	}()
 
 	// Wait for all queries to complete
 	wg.Wait()
@@ -177,10 +181,10 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build map for efficient lookup
-	userProblemsMap := make(map[int64]map[int64]userProblemRow)
+	userProblemsMap := make(map[string]map[string]userProblemRow)
 	for _, up := range userProblems {
 		if _, exists := userProblemsMap[up.UserId]; !exists {
-			userProblemsMap[up.UserId] = make(map[int64]userProblemRow)
+			userProblemsMap[up.UserId] = make(map[string]userProblemRow)
 		}
 		userProblemsMap[up.UserId][up.ProblemId] = up
 	}
@@ -231,7 +235,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build problem mapping and stats
-	problem_mapping := make(map[int]int64)
+	problem_mapping := make(map[int]string)
 	for _, cp := range contestProblems {
 		problem_mapping[cp.Index] = cp.ProblemId
 	}

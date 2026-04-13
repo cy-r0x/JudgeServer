@@ -8,7 +8,7 @@ import (
 )
 
 type Contest struct {
-	Id              int64     `json:"id" db:"id"`
+	Id              string    `json:"id" db:"id"`
 	Title           string    `json:"title" db:"title"`
 	Description     string    `json:"description" db:"description"`
 	StartTime       time.Time `json:"start_time" db:"start_time"`
@@ -18,9 +18,9 @@ type Contest struct {
 }
 
 type ContestProblem struct {
-	ContestId int64 `json:"contest_id" db:"contest_id"`
-	ProblemId int64 `json:"problem_id" db:"problem_id"`
-	Index     int   `json:"index" db:"index"`
+	ContestId string `json:"contest_id" db:"contest_id"`
+	ProblemId string `json:"problem_id" db:"problem_id"`
+	Index     int    `json:"index" db:"index"`
 }
 
 type Handler struct {

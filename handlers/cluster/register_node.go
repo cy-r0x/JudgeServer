@@ -30,6 +30,5 @@ func (h *Handler) registerNode(w http.ResponseWriter, r *http.Request) {
 	h.nodes = append(h.nodes, node)
 	h.availableNodes[node.Targets[0]] = node.Labels["node"]
 
-	
 	utils.SendResponse(w, 200, node)
 }

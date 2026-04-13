@@ -29,7 +29,7 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.Role != "admin" {
-		if submission.UserID != uint(userId) {
+		if submission.UserID != userId {
 			utils.SendResponse(w, http.StatusForbidden, "Not authorized to view this submission")
 			return
 		}

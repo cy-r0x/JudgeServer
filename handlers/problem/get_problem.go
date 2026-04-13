@@ -29,9 +29,14 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 
 	switch payload.Role {
 	case "user":
+		if payload.AllowedContest == nil || *payload.AllowedContest == "" {
+			utils.SendResponse(w, http.StatusForbidden, "You don't have access to this problem")
+			return
+		}
+
 		// Check if the user has access to this problem through their allowed contest
 		var count int64
-		err := h.db.Model(&models.ContestProblem{}).Where("problem_id = ? AND contest_id = ?", problemId, payload.AllowedContest).Count(&count).Error
+		err := h.db.Model(&models.ContestProblem{}).Where("problem_id = ? AND contest_id = ?", problemId, *payload.AllowedContest).Count(&count).Error
 		if err != nil {
 			log.Println("Error checking problem access:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem access")
@@ -46,7 +51,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		// Fall through to fetch problem data
 	case "setter":
 		// Check if the problem was created by this setter
-		var createdBy *uint
+		var createdBy *string
 		err := h.db.Model(&models.Problem{}).Select("created_by").Where("id = ?", problemId).Scan(&createdBy).Error
 		if err != nil {
 			log.Println("Error checking problem creator:", err)
@@ -54,7 +59,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if createdBy == nil || *createdBy != uint(payload.Sub) {
+		if createdBy == nil || *createdBy != payload.Sub {
 			utils.SendResponse(w, http.StatusForbidden, "You don't have access to this problem")
 			return
 		}
@@ -82,19 +87,19 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 			INNER JOIN contests c ON cp.contest_id = c.id 
 			WHERE p.id = ?`, problemId).Scan(&result).Error
 
-		if err != nil || result.ID == 0 {
+		if err != nil || result.ID == "" {
 			log.Println("Error fetching problem:", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem")
 			return
 		}
 
-		createdBy := int64(0)
+		createdBy := ""
 		if result.CreatedByID != nil {
-			createdBy = int64(*result.CreatedByID)
+			createdBy = *result.CreatedByID
 		}
 
 		problem = Problem{
-			Id:                 int64(result.ID),
+			Id:                 result.ID,
 			Title:              result.Title,
 			Slug:               result.Slug,
 			Statement:          result.Statement,
@@ -120,13 +125,13 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		createdBy := int64(0)
+		createdBy := ""
 		if dbProblem.CreatedByID != nil {
-			createdBy = int64(*dbProblem.CreatedByID)
+			createdBy = *dbProblem.CreatedByID
 		}
 
 		problem = Problem{
-			Id:                 int64(dbProblem.ID),
+			Id:                 dbProblem.ID,
 			Title:              dbProblem.Title,
 			Slug:               dbProblem.Slug,
 			Statement:          dbProblem.Statement,

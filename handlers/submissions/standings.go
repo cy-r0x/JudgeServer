@@ -12,13 +12,13 @@ const (
 )
 
 type submissionInfo struct {
-	UserID      int64     `gorm:"column:user_id"`
-	ContestID   *int64    `gorm:"column:contest_id"`
-	ProblemID   int64     `gorm:"column:problem_id"`
+	UserID      string    `gorm:"column:user_id"`
+	ContestID   *string   `gorm:"column:contest_id"`
+	ProblemID   string    `gorm:"column:problem_id"`
 	SubmittedAt time.Time `gorm:"column:submitted_at"`
 }
 
-func (h *Handler) updateStandingsForAccepted(submissionID int64) {
+func (h *Handler) updateStandingsForAccepted(submissionID string) {
 	info, err := h.fetchSubmissionContext(submissionID)
 	if err != nil {
 		log.Println("standings context error:", err)
@@ -71,8 +71,8 @@ func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 		SELECT 1 FROM submissions 
 		WHERE contest_id=? AND problem_id=? 
 		AND verdict = 'ac'
-		AND id < ?
-	)`, contestID, info.ProblemID, submissionID).Scan(&isFirstBlood).Error
+		AND submitted_at < ?
+	)`, contestID, info.ProblemID, info.SubmittedAt).Scan(&isFirstBlood).Error
 	if err != nil {
 		tx.Rollback()
 		log.Println("standings check first blood error:", err)
@@ -166,7 +166,7 @@ func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 	}
 }
 
-func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, error) {
+func (h *Handler) fetchSubmissionContext(submissionID string) (*submissionInfo, error) {
 	var info submissionInfo
 	err := h.db.Raw(`SELECT user_id, contest_id, problem_id, submitted_at FROM submissions WHERE id=?`, submissionID).Scan(&info).Error
 	if err != nil {
@@ -180,7 +180,7 @@ func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, e
 	return &info, nil
 }
 
-func (h *Handler) calculatePenalty(tx *gorm.DB, contestID int64, info *submissionInfo) (int, error) {
+func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissionInfo) (int, error) {
 	var wrongCount int
 	err := tx.Raw(`
 		SELECT COUNT(*) 
@@ -210,7 +210,7 @@ func (h *Handler) calculatePenalty(tx *gorm.DB, contestID int64, info *submissio
 	return elapsedMinutes + wrongCount*PenaltyPerWrongSubmission, nil
 }
 
-func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict string) {
+func (h *Handler) updateStandingsForNonAccepted(submissionID string, verdict string) {
 	info, err := h.fetchSubmissionContext(submissionID)
 	if err != nil {
 		log.Println("standings context error:", err)

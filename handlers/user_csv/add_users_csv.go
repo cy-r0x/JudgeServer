@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,7 +32,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 
 	prefix := r.FormValue("prefix")
 	clanLen := r.FormValue("clan_length")
-	contest_id := r.FormValue("contest_id")
+	contestID := r.FormValue("contest_id")
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
@@ -41,14 +42,14 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	clanLengthInt := safeIntParse(clanLen)
-	contestIdInt := int64(safeIntParse(contest_id))
+	contestID = strings.TrimSpace(contestID)
 
-	if contestIdInt == 0 || clanLengthInt == 0 || prefix == "" {
+	if contestID == "" || clanLengthInt == 0 || prefix == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "invalid form data")
 		return
 	}
 
-	err = h.NewWriteHandler(prefix, clanLengthInt, contestIdInt)
+	err = h.NewWriteHandler(prefix, clanLengthInt, contestID)
 	if err != nil {
 		utils.SendResponse(w, http.StatusInternalServerError, "error creating csv file")
 		return
@@ -147,9 +148,9 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var allowedContest *uint
+		var allowedContest *string
 		if user.AllowedContest != nil {
-			ac := uint(*user.AllowedContest)
+			ac := *user.AllowedContest
 			allowedContest = &ac
 		}
 
@@ -173,7 +174,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filePathEntry := models.Filepath{
-		ContestID: uint(contestIdInt),
+		ContestID: contestID,
 		FilePath:  h.Writer.FilePath,
 	}
 

@@ -34,6 +34,11 @@ func NewConnection(cfg *config.DBConfig) (*gorm.DB, error) {
 }
 
 func Migrate(dbConn *gorm.DB) error {
+	if err := dbConn.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto").Error; err != nil {
+		log.Println("Failed to enable pgcrypto extension:", err)
+		return err
+	}
+
 	err := dbConn.AutoMigrate(
 		&models.User{},
 		&models.Contest{},

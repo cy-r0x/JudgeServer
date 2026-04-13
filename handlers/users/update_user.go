@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
@@ -17,14 +16,12 @@ type UpdateUserPayload struct {
 	Clan           *string `json:"clan,omitempty"`
 	RoomNo         *string `json:"room_no,omitempty"`
 	PcNo           *string `json:"pc_no,omitempty"`
-	AllowedContest *int64  `json:"allowed_contest,omitempty"`
+	AllowedContest *string `json:"allowed_contest,omitempty"`
 }
 
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	userId := r.PathValue("userId")
-
-	userIdInt, err := strconv.ParseInt(userId, 10, 64)
-	if err != nil {
+	if userId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
@@ -66,7 +63,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := h.db.Model(&models.User{}).Where("id = ?", userIdInt).Updates(updates)
+	result := h.db.Model(&models.User{}).Where("id = ?", userId).Updates(updates)
 	if result.Error != nil {
 		log.Println(result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update user")

@@ -3,7 +3,6 @@ package standings
 import (
 	"log"
 	"net/http"
-	"strconv"
 	"sync"
 
 	"github.com/judgenot0/judge-backend/utils"
@@ -22,12 +21,7 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
 		return
 	}
-
-	contestId, err := strconv.ParseInt(contestIdStr, 10, 64)
-	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
-		return
-	}
+	contestId := contestIdStr
 
 	// Fetch all data in parallel using goroutines
 	var wg sync.WaitGroup
@@ -114,10 +108,10 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build map for efficient lookup
-	userProblemsMap := make(map[int64]map[int64]userProblemRow)
+	userProblemsMap := make(map[string]map[string]userProblemRow)
 	for _, up := range userProblems {
 		if _, exists := userProblemsMap[up.UserId]; !exists {
-			userProblemsMap[up.UserId] = make(map[int64]userProblemRow)
+			userProblemsMap[up.UserId] = make(map[string]userProblemRow)
 		}
 		userProblemsMap[up.UserId][up.ProblemId] = up
 	}

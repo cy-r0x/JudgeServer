@@ -17,7 +17,7 @@ type ProblemStatus struct {
 }
 
 type UserStanding struct {
-	UserId       int64           `json:"user_id"`
+	UserId       string          `json:"user_id"`
 	Username     string          `json:"username"`
 	FullName     string          `json:"full_name"`
 	Clan         *string         `json:"clan"`
@@ -33,9 +33,9 @@ type ProblemSolveStatus struct {
 }
 
 type StandingsResponse struct {
-	ContestId          int64                      `json:"contest_id"`
+	ContestId          string                     `json:"contest_id"`
 	ContestTitle       string                     `json:"contest_title"`
-	ProblemMapping     map[int]int64              `json:"problem_mapping"`
+	ProblemMapping     map[int]string             `json:"problem_mapping"`
 	Standings          []UserStanding             `json:"standings"`
 	StartTime          time.Time                  `json:"start_time"`
 	DurationSeconds    int64                      `json:"duration_seconds"`
@@ -47,7 +47,7 @@ type StandingsResponse struct {
 }
 
 type ContestProblem struct {
-	ProblemId int64  `gorm:"column:problem_id"`
+	ProblemId string `gorm:"column:problem_id"`
 	Index     int    `gorm:"column:index"`
 	Title     string `gorm:"column:title"`
 }
@@ -59,7 +59,7 @@ type ContestInfo struct {
 }
 
 type userStandingRow struct {
-	UserId       int64        `gorm:"column:user_id"`
+	UserId       string       `gorm:"column:user_id"`
 	Username     string       `gorm:"column:username"`
 	FullName     string       `gorm:"column:full_name"`
 	Clan         *string      `gorm:"column:clan"`
@@ -69,8 +69,8 @@ type userStandingRow struct {
 }
 
 type userProblemRow struct {
-	UserId       int64        `gorm:"column:user_id"`
-	ProblemId    int64        `gorm:"column:problem_id"`
+	UserId       string       `gorm:"column:user_id"`
+	ProblemId    string       `gorm:"column:problem_id"`
 	ProblemIndex int          `gorm:"column:problem_index"`
 	IsSolved     bool         `gorm:"column:is_solved"`
 	SolvedAt     sql.NullTime `gorm:"column:solved_at"`
@@ -88,7 +88,7 @@ type problemStatsRow struct {
 type Handler struct {
 	db             *gorm.DB
 	mu             sync.RWMutex
-	Last_standings map[int64]struct {
+	Last_standings map[string]struct {
 		timestamp *time.Time
 		standings *StandingsResponse
 	}

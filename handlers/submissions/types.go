@@ -5,16 +5,16 @@ import (
 )
 
 type Submission struct {
-	Id            int64     `json:"id" db:"id"`
-	UserId        int64     `json:"user_id,omitempty" db:"user_id"`
+	Id            string    `json:"id" db:"id"`
+	UserId        string    `json:"user_id,omitempty" db:"user_id"`
 	Username      string    `json:"username" db:"username"`
 	Clan          *string   `json:"clan,omitempty" db:"clan"`
 	FullName      string    `json:"full_name,omitempty" db:"full_name"`
 	RoomNo        *string   `json:"room_no,omitempty" db:"room_no"`
 	PcNo          *string   `json:"pc_no,omitempty" db:"pc_no"`
-	ProblemId     int64     `json:"problem_id" db:"problem_id"`
+	ProblemId     string    `json:"problem_id" db:"problem_id"`
 	ProblemIndex  int       `json:"problem_index" db:"problem_index"`
-	ContestId     int64     `json:"contest_id,omitempty" db:"contest_id"`
+	ContestId     string    `json:"contest_id,omitempty" db:"contest_id"`
 	Language      string    `json:"language" db:"language"`
 	SourceCode    string    `json:"source_code,omitempty" db:"source_code"`
 	Verdict       string    `json:"verdict" db:"verdict"`
@@ -24,8 +24,8 @@ type Submission struct {
 }
 
 type UserSubmission struct {
-	ProblemId  int64  `json:"problem_id"`
-	ContestId  int64  `json:"contest_id"`
+	ProblemId  string `json:"problem_id"`
+	ContestId  string `json:"contest_id"`
 	Language   string `json:"language"`
 	SourceCode string `json:"source_code"`
 }
@@ -36,7 +36,7 @@ type Testcase struct {
 }
 
 type Problem struct {
-	SubmissionId       int64      `gorm:"-" json:"submission_id"`
+	SubmissionId       string     `gorm:"-" json:"submission_id"`
 	Language           string     `gorm:"-" json:"language"`
 	SourceCode         string     `gorm:"-" json:"source_code"`
 	TimeLimit          float32    `json:"time_limit" db:"time_limit"`

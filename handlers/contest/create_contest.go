@@ -37,7 +37,7 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqContest.Id = int64(newContest.ID)
+	reqContest.Id = newContest.ID
 	reqContest.CreatedAt = newContest.CreatedAt
 	reqContest.StartTime = newContest.StartTime
 

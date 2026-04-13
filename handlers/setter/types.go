@@ -7,7 +7,7 @@ import (
 )
 
 type Problem struct {
-	Id        int64     `json:"id" gorm:"column:id"`
+	Id        string    `json:"id" gorm:"column:id"`
 	Title     string    `json:"title" gorm:"column:title"`
 	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
 }

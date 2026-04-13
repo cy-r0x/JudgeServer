@@ -5,7 +5,7 @@ import (
 )
 
 type Problem struct {
-	ID                 uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	ID                 string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	Title              string    `gorm:"type:varchar(255);not null" json:"title"`
 	Slug               string    `gorm:"type:varchar(255);uniqueIndex;not null" json:"slug"`
 	Statement          string    `gorm:"type:text;not null" json:"statement"`
@@ -16,14 +16,14 @@ type Problem struct {
 	CheckerType        string    `gorm:"type:varchar(10);not null" json:"checkerType"`
 	CheckerStrictSpace bool      `gorm:"not null" json:"checkerStrictSpace"`
 	CheckerPrecision   *string   `gorm:"type:varchar(10)" json:"checkerPrecision"`
-	CreatedByID        *uint     `gorm:"column:created_by;index:idx_problems_created_by" json:"createdById"`
+	CreatedByID        *string   `gorm:"type:uuid;column:created_by;index:idx_problems_created_by" json:"createdById"`
 	CreatedBy          *User     `gorm:"foreignKey:CreatedByID;constraint:OnDelete:SET NULL;" json:"createdBy,omitempty"`
 	CreatedAt          time.Time `gorm:"type:timestamptz;default:now()" json:"createdAt"`
 }
 
 type ContestProblem struct {
-	ContestID uint     `gorm:"primaryKey;autoIncrement:false;index:idx_contest_problems_contest" json:"contestId"`
-	ProblemID uint     `gorm:"primaryKey;autoIncrement:false" json:"problemId"`
+	ContestID string   `gorm:"type:uuid;primaryKey;index:idx_contest_problems_contest" json:"contestId"`
+	ProblemID string   `gorm:"type:uuid;primaryKey" json:"problemId"`
 	Index     int      `gorm:"not null;index:idx_contest_problems_contest" json:"index"`
 	Contest   *Contest `gorm:"foreignKey:ContestID;constraint:OnDelete:CASCADE;" json:"contest,omitempty"`
 	Problem   *Problem `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE;" json:"problem,omitempty"`

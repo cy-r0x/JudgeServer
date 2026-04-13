@@ -3,7 +3,6 @@ package users
 import (
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
@@ -11,14 +10,12 @@ import (
 
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userId := r.PathValue("userId")
-
-	userIdInt, err := strconv.ParseInt(userId, 10, 64)
-	if err != nil {
+	if userId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	result := h.db.Delete(&models.User{}, userIdInt)
+	result := h.db.Delete(&models.User{}, "id = ?", userId)
 	if result.Error != nil {
 		log.Println(result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete user")

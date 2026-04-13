@@ -6,7 +6,8 @@ import (
 	"github.com/judgenot0/judge-backend/models"
 )
 
-func (h *Handler) fetchTestcases(problemId int64, isSample bool) ([]Testcase, error) {
+func (h *Handler) fetchTestcases(problemId string, isSample bool) ([]Testcase, error) {
+
 	query := h.db.Model(&models.Testcase{}).Select("input", "expected_output").Where("problem_id = ?", problemId)
 
 	if isSample {

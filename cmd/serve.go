@@ -44,7 +44,6 @@ func Serve() {
 	// Start DLQ processor in the background
 	go queueClient.StartDLQProcessor(context.Background())
 
-
 	err = db.Migrate(dbConn)
 	if err != nil {
 		os.Exit(1)

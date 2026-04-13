@@ -32,9 +32,9 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var allowedContest *uint
+	var allowedContest *string
 	if reqUser.AllowedContest != nil {
-		ac := uint(*reqUser.AllowedContest)
+		ac := *reqUser.AllowedContest
 		allowedContest = &ac
 	}
 
@@ -62,7 +62,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqUser.Id = int64(newUser.ID)
+	reqUser.Id = newUser.ID
 	reqUser.Password = ""
 	reqUser.Role = newUser.Role
 	reqUser.CreatedAt = newUser.CreatedAt

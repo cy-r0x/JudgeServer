@@ -12,14 +12,14 @@ import (
 )
 
 type Payload struct {
-	Sub            int64   `json:"sub"`
+	Sub            string  `json:"sub"`
 	FullName       string  `json:"full_name"`
 	Username       string  `json:"username"`
 	Clan           *string `json:"clan"`
 	Role           string  `json:"role"`
 	RoomNo         *string `json:"room_no"`
 	PcNo           *string `json:"pc_no"`
-	AllowedContest *int64  `json:"allowed_contest"`
+	AllowedContest *string `json:"allowed_contest"`
 	AccessToken    string  `json:"accessToken"`
 	jwt.RegisteredClaims
 }

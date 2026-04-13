@@ -17,7 +17,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	if contestProblem.ContestId == 0 || contestProblem.ProblemId == 0 {
+	if contestProblem.ContestId == "" || contestProblem.ProblemId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest ID and Problem ID are required")
 		return
 	}
@@ -100,8 +100,8 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	contestProblem.Index = int(count) + 1
 
 	newCP := models.ContestProblem{
-		ContestID: uint(contestProblem.ContestId),
-		ProblemID: uint(contestProblem.ProblemId),
+		ContestID: contestProblem.ContestId,
+		ProblemID: contestProblem.ProblemId,
 		Index:     contestProblem.Index,
 	}
 

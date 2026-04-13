@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -40,6 +41,9 @@ func Serve() {
 		os.Exit(1)
 	}
 	defer queueClient.Close()
+	// Start DLQ processor in the background
+	go queueClient.StartDLQProcessor(context.Background())
+
 
 	err = db.Migrate(dbConn)
 	if err != nil {

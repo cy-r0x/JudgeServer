@@ -81,18 +81,15 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	var errChan = make(chan error, 5)
 
 	// Query 1: Fetch contest info
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		err := h.db.Raw(`SELECT title, start_time, duration_seconds FROM contests WHERE id = ?`, contestId).Scan(&contestInfo).Error
 		if err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Query 2: Fetch contest problems
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		defer wg.Done()
 		err := h.db.Raw(`
 			SELECT cp.problem_id, cp.index, p.title
@@ -104,12 +101,10 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Query 3: Fetch user standings
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		err := h.db.Raw(`
 			SELECT 
 				u.id AS user_id,
@@ -117,7 +112,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 				u.full_name,
 				u.clan,
 				COALESCE(cs.solved_count, 0) AS solved_count,
-				COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0) AS penalty,
+				COALESCE(cs.penalty, 0) AS penalty,
 				cs.last_solved_at
 			FROM (
 				SELECT DISTINCT user_id 
@@ -126,17 +121,15 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 			) participants
 			JOIN users u ON u.id = participants.user_id
 			LEFT JOIN contest_standings cs ON cs.contest_id = ? AND cs.user_id = participants.user_id
-			ORDER BY COALESCE(cs.solved_count, 0) DESC, (COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0)) ASC, u.id ASC
+			ORDER BY COALESCE(cs.solved_count, 0) DESC, COALESCE(cs.penalty, 0) ASC, cs.last_solved_at ASC, u.id ASC
 		`, contestId, contestId).Scan(&userStandings).Error
 		if err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Query 4: Fetch user-problem details
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		err := h.db.Raw(`
 			SELECT 
 				user_id,
@@ -154,12 +147,10 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Query 5: Fetch problem statistics
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		err := h.db.Raw(`
 			SELECT 
 				problem_index,
@@ -172,7 +163,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Wait for all queries to complete
 	wg.Wait()

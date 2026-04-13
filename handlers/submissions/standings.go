@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	PenaltyPerWrongSubmission = 15 // minutes penalty for each wrong submission
+	PenaltyPerWrongSubmission = 20 // minutes penalty for each wrong submission
 )
 
 type submissionInfo struct {
@@ -238,6 +238,21 @@ func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict stri
 			tx.Rollback()
 		}
 	}()
+
+	// Check if already solved
+	var alreadySolved bool
+	err = tx.Raw(`SELECT EXISTS (SELECT 1 FROM contest_solves WHERE contest_id=? AND user_id=? AND problem_id=?)`, contestID, info.UserID, info.ProblemID).Scan(&alreadySolved).Error
+	if err != nil {
+		tx.Rollback()
+		log.Println("standings check exists error:", err)
+		return
+	}
+	if alreadySolved {
+		if err := tx.Commit().Error; err != nil {
+			log.Println("standings commit error:", err)
+		}
+		return
+	}
 
 	// Get problem index
 	var problemIndex int

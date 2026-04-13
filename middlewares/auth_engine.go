@@ -14,7 +14,7 @@ import (
 )
 
 type EngineData struct {
-	SubmissionId    string   `json:"submission_id"`
+	SubmissionId    int64    `json:"submission_id"`
 	Verdict         string   `json:"verdict"`
 	ExecutionTime   *float32 `json:"execution_time"`
 	ExecutionMemory *float32 `json:"execution_memory"`

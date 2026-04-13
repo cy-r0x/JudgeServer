@@ -18,7 +18,7 @@ type submissionInfo struct {
 	SubmittedAt time.Time `gorm:"column:submitted_at"`
 }
 
-func (h *Handler) updateStandingsForAccepted(submissionID string) {
+func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 	info, err := h.fetchSubmissionContext(submissionID)
 	if err != nil {
 		log.Println("standings context error:", err)
@@ -166,7 +166,7 @@ func (h *Handler) updateStandingsForAccepted(submissionID string) {
 	}
 }
 
-func (h *Handler) fetchSubmissionContext(submissionID string) (*submissionInfo, error) {
+func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, error) {
 	var info submissionInfo
 	err := h.db.Raw(`SELECT user_id, contest_id, problem_id, submitted_at FROM submissions WHERE id=?`, submissionID).Scan(&info).Error
 	if err != nil {
@@ -210,7 +210,7 @@ func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissi
 	return elapsedMinutes + wrongCount*PenaltyPerWrongSubmission, nil
 }
 
-func (h *Handler) updateStandingsForNonAccepted(submissionID string, verdict string) {
+func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict string) {
 	info, err := h.fetchSubmissionContext(submissionID)
 	if err != nil {
 		log.Println("standings context error:", err)

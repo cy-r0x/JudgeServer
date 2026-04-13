@@ -5,7 +5,7 @@ import (
 )
 
 type Submission struct {
-	Id            string    `json:"id" db:"id"`
+	Id            int64     `json:"id" db:"id"`
 	UserId        string    `json:"user_id,omitempty" db:"user_id"`
 	Username      string    `json:"username" db:"username"`
 	Clan          *string   `json:"clan,omitempty" db:"clan"`
@@ -36,7 +36,7 @@ type Testcase struct {
 }
 
 type Problem struct {
-	SubmissionId       string     `gorm:"-" json:"submission_id"`
+	SubmissionId       int64      `gorm:"-" json:"submission_id"`
 	Language           string     `gorm:"-" json:"language"`
 	SourceCode         string     `gorm:"-" json:"source_code"`
 	TimeLimit          float32    `json:"time_limit" db:"time_limit"`

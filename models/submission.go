@@ -5,7 +5,7 @@ import (
 )
 
 type Submission struct {
-	ID            string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ID            int64     `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID        string    `gorm:"type:uuid;not null;index:idx_submissions_user;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup;index:idx_submissions_contest_user" json:"userId"`
 	Username      string    `gorm:"type:varchar(50);not null" json:"username"`
 	ProblemID     string    `gorm:"type:uuid;not null;index:idx_submissions_problem;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup" json:"problemId"`

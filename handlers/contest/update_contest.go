@@ -38,7 +38,10 @@ func (h *Handler) UpdateContest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updatedContest models.Contest
-	h.db.First(&updatedContest, contest.Id)
+	if err := h.db.Where("id = ?", contest.Id).First(&updatedContest).Error; err != nil {
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch updated contest")
+		return
+	}
 
 	contest.CreatedAt = updatedContest.CreatedAt
 

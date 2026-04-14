@@ -222,12 +222,6 @@ func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict stri
 
 	contestID := *info.ContestID
 
-	// Only track certain wrong verdicts
-	lowerVerdict := verdict
-	if lowerVerdict != "wa" && lowerVerdict != "tle" && lowerVerdict != "re" && lowerVerdict != "mle" {
-		return
-	}
-
 	tx := h.db.Begin()
 	if tx.Error != nil {
 		log.Println("standings tx begin error:", tx.Error)

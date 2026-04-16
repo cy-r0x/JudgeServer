@@ -32,12 +32,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
 		return
 	}
-
-	contestId, err := strconv.ParseInt(contestIdStr, 10, 64)
-	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
-		return
-	}
+	contestId := contestIdStr
 
 	currentTime := time.Now()
 
@@ -117,7 +112,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 				u.full_name,
 				u.clan,
 				COALESCE(cs.solved_count, 0) AS solved_count,
-				COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0) AS penalty,
+				COALESCE(cs.penalty, 0) AS penalty,
 				cs.last_solved_at
 			FROM (
 				SELECT DISTINCT user_id 
@@ -126,7 +121,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 			) participants
 			JOIN users u ON u.id = participants.user_id
 			LEFT JOIN contest_standings cs ON cs.contest_id = ? AND cs.user_id = participants.user_id
-			ORDER BY COALESCE(cs.solved_count, 0) DESC, (COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0)) ASC, u.id ASC
+			ORDER BY COALESCE(cs.solved_count, 0) DESC, COALESCE(cs.penalty, 0) ASC, cs.last_solved_at ASC, u.id ASC
 		`, contestId, contestId).Scan(&userStandings).Error
 		if err != nil {
 			errChan <- err
@@ -186,10 +181,10 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build map for efficient lookup
-	userProblemsMap := make(map[int64]map[int64]userProblemRow)
+	userProblemsMap := make(map[string]map[string]userProblemRow)
 	for _, up := range userProblems {
 		if _, exists := userProblemsMap[up.UserId]; !exists {
-			userProblemsMap[up.UserId] = make(map[int64]userProblemRow)
+			userProblemsMap[up.UserId] = make(map[string]userProblemRow)
 		}
 		userProblemsMap[up.UserId][up.ProblemId] = up
 	}
@@ -240,7 +235,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build problem mapping and stats
-	problem_mapping := make(map[int]int64)
+	problem_mapping := make(map[int]string)
 	for _, cp := range contestProblems {
 		problem_mapping[cp.Index] = cp.ProblemId
 	}

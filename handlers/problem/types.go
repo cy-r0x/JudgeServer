@@ -7,8 +7,8 @@ import (
 )
 
 type Testcase struct {
-	Id             int64     `json:"id" gorm:"column:id"`
-	ProblemId      int64     `json:"problem_id" gorm:"column:problem_id"`
+	Id             string    `json:"id" gorm:"column:id"`
+	ProblemId      string    `json:"problem_id" gorm:"column:problem_id"`
 	Input          string    `json:"input" gorm:"column:input"`
 	ExpectedOutput string    `json:"expected_output" gorm:"column:expected_output"`
 	IsSample       bool      `json:"is_sample" gorm:"column:is_sample"`
@@ -16,7 +16,7 @@ type Testcase struct {
 }
 
 type Problem struct {
-	Id                 int64               `json:"id" gorm:"column:id"`
+	Id                 string              `json:"id" gorm:"column:id"`
 	Title              string              `json:"title" gorm:"column:title"`
 	Slug               string              `json:"slug" gorm:"column:slug"`
 	Statement          string              `json:"statement" gorm:"column:statement"`
@@ -30,7 +30,7 @@ type Problem struct {
 	CheckerPrecision   *string             `json:"checker_precision" gorm:"column:checker_precision"`
 	StartTime          *time.Time          `json:"start_time,omitempty" gorm:"column:start_time"`
 	DurationSeconds    *int64              `json:"duration_seconds,omitempty" gorm:"column:duration_seconds"`
-	CreatedBy          int64               `json:"created_by" gorm:"column:created_by"`
+	CreatedBy          string              `json:"created_by" gorm:"column:created_by"`
 	CreatedAt          time.Time           `json:"created_at" gorm:"column:created_at"`
 	LastSubmission     *LastSubmissionData `json:"last_submission,omitempty" gorm:"-"`
 }

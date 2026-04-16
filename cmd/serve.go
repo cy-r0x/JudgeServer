@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 	usercsv "github.com/judgenot0/judge-backend/handlers/user_csv"
 	"github.com/judgenot0/judge-backend/handlers/users"
 	"github.com/judgenot0/judge-backend/infra/db"
+	"github.com/judgenot0/judge-backend/infra/queue"
 	"github.com/judgenot0/judge-backend/middlewares"
 )
 
@@ -31,6 +33,16 @@ func Serve() {
 	if err != nil {
 		os.Exit(1)
 	}
+
+	queueClient := queue.NewQueue()
+	err = queueClient.InitQueue(config)
+	if err != nil {
+		log.Println("Failed to initialize queue:", err)
+		os.Exit(1)
+	}
+	defer queueClient.Close()
+	// Start DLQ processor in the background
+	go queueClient.StartDLQProcessor(context.Background())
 
 	err = db.Migrate(dbConn)
 	if err != nil {
@@ -49,7 +61,7 @@ func Serve() {
 	problemHandler := problem.NewHandler(dbConn)
 	setterHandler := setter.NewHandler(dbConn)
 	standingsHandler := standings.NewHandler(dbConn)
-	submissionsHandler := submissions.NewHandler(dbConn, config)
+	submissionsHandler := submissions.NewHandler(dbConn, config, queueClient)
 	usersHandler := users.NewHandler(config, dbConn)
 	userCsvHandler := usercsv.NewHandler(dbConn)
 	compilerunHandler := compilerun.NewHandler(dbConn, config)

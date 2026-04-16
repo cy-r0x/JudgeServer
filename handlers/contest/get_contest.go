@@ -13,7 +13,7 @@ import (
 )
 
 func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
-	var userId *int64
+	var userId *string
 	header := r.Header.Get("Authorization")
 
 	if header != "" {
@@ -51,7 +51,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contest := Contest{
-		Id:              int64(dbContest.ID),
+		Id:              dbContest.ID,
 		Title:           dbContest.Title,
 		Description:     description,
 		StartTime:       dbContest.StartTime,
@@ -73,7 +73,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 	// Get Contest Problems
 	type Problem struct {
-		Id           int64  `json:"id"`
+		Id           string `json:"id"`
 		Title        string `json:"title"`
 		Slug         string `json:"slug"`
 		Index        int    `json:"index"`
@@ -106,11 +106,11 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 			ORDER BY cp.index
 		`
 
-		var uId sql.NullInt64
+		var uId sql.NullString
 		if userId != nil {
-			uId = sql.NullInt64{Int64: *userId, Valid: true}
+			uId = sql.NullString{String: *userId, Valid: true}
 		} else {
-			uId = sql.NullInt64{Valid: false}
+			uId = sql.NullString{Valid: false}
 		}
 
 		err = h.db.Raw(problemsQuery, sql.Named("contestId", contestId), sql.Named("userId", uId)).Scan(&problems).Error

@@ -18,7 +18,7 @@ func (h *Handler) GetSetters(w http.ResponseWriter, r *http.Request) {
 	var response []UserResponse
 	for _, u := range users {
 		response = append(response, UserResponse{
-			Id:       int64(u.ID),
+			Id:       u.ID,
 			FullName: u.FullName,
 			Username: u.Username,
 			Clan:     u.Clan,

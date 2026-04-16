@@ -3,7 +3,6 @@ package contest_problems
 import (
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
@@ -11,17 +10,14 @@ import (
 
 func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	contestId := r.PathValue("contestId")
-
-	// Convert contestId to int64
-	contestIdInt, err := strconv.ParseInt(contestId, 10, 64)
-	if err != nil {
+	if contestId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
 		return
 	}
 
 	// Check if contest exists
 	var countContest int64
-	if err = h.db.Model(&models.Contest{}).Where("id = ?", contestIdInt).Count(&countContest).Error; err != nil {
+	if err := h.db.Model(&models.Contest{}).Where("id = ?", contestId).Count(&countContest).Error; err != nil {
 		log.Println("Failed to check contest existence:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems")
 		return
@@ -47,7 +43,7 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 		ORDER BY cp.index ASC
 	`
 
-	if err = h.db.Raw(query, contestIdInt).Scan(&contestProblems).Error; err != nil {
+	if err := h.db.Raw(query, contestId).Scan(&contestProblems).Error; err != nil {
 		log.Println("Failed to get contest problems:", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems")
 		return

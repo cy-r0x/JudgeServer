@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -27,7 +26,7 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// For setters, verify they created this problem
-	var createdBy *uint
+	var createdBy *string
 	err := h.db.Model(&models.Problem{}).Select("created_by").Where("id = ?", reqProblem.Id).Scan(&createdBy).Error
 	if err != nil {
 		log.Println("Error checking problem creator:", err)
@@ -35,7 +34,7 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if createdBy == nil || *createdBy != uint(payload.Sub) {
+	if createdBy == nil || *createdBy != payload.Sub {
 		utils.SendResponse(w, http.StatusForbidden, "You can only update problems you've created")
 		return
 	}
@@ -62,6 +61,6 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.SetPathValue("problemId", strconv.FormatInt(reqProblem.Id, 10))
+	r.SetPathValue("problemId", reqProblem.Id)
 	h.GetProblem(w, r)
 }

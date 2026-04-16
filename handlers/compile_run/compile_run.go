@@ -49,7 +49,7 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 
 	testcases, err := h.fetchTestcases(submission.ProblemId, isSampleOnly)
 	if err != nil {
-		log.Printf("Error fetching testcases for problem ID %d: %v", submission.ProblemId, err)
+		log.Printf("Error fetching testcases for problem ID %s: %v", submission.ProblemId, err)
 		utils.SendResponse(w, http.StatusInternalServerError, map[string]string{
 			"error": "Failed to fetch testcases for this problem",
 		})

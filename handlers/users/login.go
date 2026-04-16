@@ -41,15 +41,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var allowedContest *int64
+	var allowedContest *string
 	if dbUser.AllowedContest != nil {
-		ac := int64(*dbUser.AllowedContest)
+		ac := *dbUser.AllowedContest
 		allowedContest = &ac
 	}
 
 	// build payload
 	payload := &Payload{
-		Sub:            int64(dbUser.ID),
+		Sub:            dbUser.ID,
 		FullName:       dbUser.FullName,
 		Username:       dbUser.Username,
 		Clan:           dbUser.Clan,

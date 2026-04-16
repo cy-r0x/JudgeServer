@@ -18,11 +18,14 @@ type DBConfig struct {
 }
 
 type Config struct {
-	HttpPort  string
-	SecretKey string
-	DB        *DBConfig
-	EngineKey string
-	EngineUrl string
+	HttpPort    string
+	SecretKey   string
+	DB          *DBConfig
+	EngineKey   string
+	EngineUrl   string
+	WorkerCount int
+	QueueName   string
+	RabbitMQURL string
 }
 
 var configuration *Config
@@ -104,6 +107,18 @@ func loadConfig() (*Config, error) {
 	}
 
 	config.DB = dbConfig
+
+	config.QueueName = os.Getenv("QUEUE_NAME")
+	if config.QueueName == "" {
+		config.QueueName = "judge_queue"
+		log.Println("QUEUE_NAME not set, using default: judge_queue")
+	}
+
+	config.RabbitMQURL = os.Getenv("RABBITMQ_URL")
+	if config.RabbitMQURL == "" {
+		config.RabbitMQURL = "amqp://guest:guest@localhost:5672/"
+		log.Println("RABBITMQ_URL not set, using default: amqp://guest:guest@localhost:5672/")
+	}
 
 	return &config, nil
 }

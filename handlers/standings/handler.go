@@ -9,7 +9,7 @@ import (
 func NewHandler(db *gorm.DB) *Handler {
 	return &Handler{
 		db: db,
-		Last_standings: make(map[int64]struct {
+		Last_standings: make(map[string]struct {
 			timestamp *time.Time
 			standings *StandingsResponse
 		}),

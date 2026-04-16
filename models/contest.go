@@ -5,7 +5,7 @@ import (
 )
 
 type Contest struct {
-	ID              uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	ID              string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	Title           string    `gorm:"type:varchar(255);not null" json:"title"`
 	Description     *string   `gorm:"type:text" json:"description"`
 	StartTime       time.Time `gorm:"type:timestamptz;index:idx_contests_start_time;not null" json:"startTime"`

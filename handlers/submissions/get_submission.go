@@ -3,6 +3,7 @@ package submissions
 import (
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/judgenot0/judge-backend/middlewares"
 	"github.com/judgenot0/judge-backend/models"
@@ -16,7 +17,12 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userId := payload.Sub
-	submissionId := r.PathValue("submissonId")
+	submissionIdStr := r.PathValue("submissonId")
+	submissionId, err := strconv.ParseInt(submissionIdStr, 10, 64)
+	if err != nil {
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid submission ID")
+		return
+	}
 
 	var submission models.Submission
 	if err := h.db.
@@ -29,7 +35,7 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.Role != "admin" {
-		if submission.UserID != uint(userId) {
+		if submission.UserID != userId {
 			utils.SendResponse(w, http.StatusForbidden, "Not authorized to view this submission")
 			return
 		}

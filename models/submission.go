@@ -5,11 +5,11 @@ import (
 )
 
 type Submission struct {
-	ID            uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID        uint      `gorm:"not null;index:idx_submissions_user;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup;index:idx_submissions_contest_user" json:"userId"`
+	ID            int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID        string    `gorm:"type:uuid;not null;index:idx_submissions_user;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup;index:idx_submissions_contest_user" json:"userId"`
 	Username      string    `gorm:"type:varchar(50);not null" json:"username"`
-	ProblemID     uint      `gorm:"not null;index:idx_submissions_problem;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup" json:"problemId"`
-	ContestID     *uint     `gorm:"index:idx_submissions_contest;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup;index:idx_submissions_contest_user" json:"contestId"`
+	ProblemID     string    `gorm:"type:uuid;not null;index:idx_submissions_problem;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup" json:"problemId"`
+	ContestID     *string   `gorm:"type:uuid;index:idx_submissions_contest;index:idx_submissions_contest_user_problem;index:idx_submissions_penalty_lookup;index:idx_submissions_contest_user" json:"contestId"`
 	Language      string    `gorm:"type:varchar(30);not null" json:"language"`
 	SourceCode    string    `gorm:"type:text;not null" json:"sourceCode"`
 	FilePath      *string   `gorm:"type:text" json:"filePath"`

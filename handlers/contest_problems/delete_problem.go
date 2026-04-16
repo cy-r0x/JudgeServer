@@ -17,7 +17,7 @@ func (h *Handler) DeleteContestProblem(w http.ResponseWriter, r *http.Request) {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	if contestProblem.ContestId == 0 || contestProblem.ProblemId == 0 {
+	if contestProblem.ContestId == "" || contestProblem.ProblemId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Contest ID and Problem ID are required")
 		return
 	}

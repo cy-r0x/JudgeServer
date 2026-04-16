@@ -18,13 +18,13 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if testcase.ProblemId == 0 {
+	if testcase.ProblemId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Problem ID is required")
 		return
 	}
 
 	newTestcase := models.Testcase{
-		ProblemID:      uint(testcase.ProblemId),
+		ProblemID:      testcase.ProblemId,
 		Input:          testcase.Input,
 		ExpectedOutput: testcase.ExpectedOutput,
 		IsSample:       testcase.IsSample,
@@ -37,7 +37,7 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	testcase.Id = int64(newTestcase.ID)
+	testcase.Id = newTestcase.ID
 	testcase.CreatedAt = newTestcase.CreatedAt
 
 	utils.SendResponse(w, http.StatusOK, testcase)

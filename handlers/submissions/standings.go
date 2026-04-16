@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	PenaltyPerWrongSubmission = 15 // minutes penalty for each wrong submission
+	PenaltyPerWrongSubmission = 20 // minutes penalty for each wrong submission
 )
 
 type submissionInfo struct {
-	UserID      int64     `gorm:"column:user_id"`
-	ContestID   *int64    `gorm:"column:contest_id"`
-	ProblemID   int64     `gorm:"column:problem_id"`
+	UserID      string    `gorm:"column:user_id"`
+	ContestID   *string   `gorm:"column:contest_id"`
+	ProblemID   string    `gorm:"column:problem_id"`
 	SubmittedAt time.Time `gorm:"column:submitted_at"`
 }
 
@@ -71,8 +71,8 @@ func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 		SELECT 1 FROM submissions 
 		WHERE contest_id=? AND problem_id=? 
 		AND verdict = 'ac'
-		AND id < ?
-	)`, contestID, info.ProblemID, submissionID).Scan(&isFirstBlood).Error
+		AND submitted_at < ?
+	)`, contestID, info.ProblemID, info.SubmittedAt).Scan(&isFirstBlood).Error
 	if err != nil {
 		tx.Rollback()
 		log.Println("standings check first blood error:", err)
@@ -180,7 +180,7 @@ func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, e
 	return &info, nil
 }
 
-func (h *Handler) calculatePenalty(tx *gorm.DB, contestID int64, info *submissionInfo) (int, error) {
+func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissionInfo) (int, error) {
 	var wrongCount int
 	err := tx.Raw(`
 		SELECT COUNT(*) 
@@ -222,12 +222,6 @@ func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict stri
 
 	contestID := *info.ContestID
 
-	// Only track certain wrong verdicts
-	lowerVerdict := verdict
-	if lowerVerdict != "wa" && lowerVerdict != "tle" && lowerVerdict != "re" && lowerVerdict != "mle" {
-		return
-	}
-
 	tx := h.db.Begin()
 	if tx.Error != nil {
 		log.Println("standings tx begin error:", tx.Error)
@@ -238,6 +232,21 @@ func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict stri
 			tx.Rollback()
 		}
 	}()
+
+	// Check if already solved
+	var alreadySolved bool
+	err = tx.Raw(`SELECT EXISTS (SELECT 1 FROM contest_solves WHERE contest_id=? AND user_id=? AND problem_id=?)`, contestID, info.UserID, info.ProblemID).Scan(&alreadySolved).Error
+	if err != nil {
+		tx.Rollback()
+		log.Println("standings check exists error:", err)
+		return
+	}
+	if alreadySolved {
+		if err := tx.Commit().Error; err != nil {
+			log.Println("standings commit error:", err)
+		}
+		return
+	}
 
 	// Get problem index
 	var problemIndex int

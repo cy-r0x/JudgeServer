@@ -40,8 +40,6 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 	reqProblem.Slug = strings.ReplaceAll(strings.ToLower(reqProblem.Title), " ", "-")
 	reqProblem.CreatedAt = time.Now()
 
-	createdByUint := uint(reqProblem.CreatedBy)
-
 	newProblem := models.Problem{
 		Title:              reqProblem.Title,
 		Slug:               reqProblem.Slug,
@@ -53,7 +51,7 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 		CheckerType:        reqProblem.CheckerType,
 		CheckerStrictSpace: reqProblem.CheckerStrictSpace,
 		CheckerPrecision:   reqProblem.CheckerPrecision,
-		CreatedByID:        &createdByUint,
+		CreatedByID:        &reqProblem.CreatedBy,
 		CreatedAt:          reqProblem.CreatedAt,
 	}
 
@@ -64,7 +62,7 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqProblem.Id = int64(newProblem.ID)
+	reqProblem.Id = newProblem.ID
 	reqProblem.CreatedAt = newProblem.CreatedAt
 	reqProblem.Testcases = []Testcase{}
 

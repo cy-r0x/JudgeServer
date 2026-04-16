@@ -5,8 +5,8 @@ import (
 )
 
 type Testcase struct {
-	ID             uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	ProblemID      uint      `gorm:"not null;index:idx_testcases_problem" json:"problemId"`
+	ID             string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ProblemID      string    `gorm:"type:uuid;not null;index:idx_testcases_problem" json:"problemId"`
 	Input          string    `gorm:"type:text;not null" json:"input"`
 	ExpectedOutput string    `gorm:"type:text;not null" json:"expectedOutput"`
 	IsSample       bool      `gorm:"default:false" json:"isSample"`

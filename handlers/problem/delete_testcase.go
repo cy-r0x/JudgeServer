@@ -3,21 +3,20 @@ package problem
 import (
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
 func (h *Handler) DeleteTestcase(w http.ResponseWriter, r *http.Request) {
-	testcaseId, err := strconv.ParseInt(r.PathValue("testcaseId"), 10, 64)
-	if err != nil {
-		log.Println(err)
+	testcaseId := r.PathValue("testcaseId")
+	if testcaseId == "" {
+		log.Println("missing testcase ID")
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid testcase ID")
 		return
 	}
 
-	result := h.db.Delete(&models.Testcase{}, testcaseId)
+	result := h.db.Delete(&models.Testcase{}, "id = ?", testcaseId)
 	if result.Error != nil {
 		log.Println("Error deleting testcase:", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete testcase")

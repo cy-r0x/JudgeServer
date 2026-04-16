@@ -12,7 +12,7 @@ import (
 )
 
 type User struct {
-	Id               int64     `json:"id" db:"id"`
+	Id               string    `json:"id" db:"id"`
 	FullName         string    `json:"full_name" db:"full_name"`
 	Username         string    `json:"username" db:"username"`
 	Password         string    `json:"password,omitempty" db:"password"`
@@ -21,7 +21,7 @@ type User struct {
 	Clan             *string   `json:"clan,omitempty" db:"clan"`
 	RoomNo           *string   `json:"room_no,omitempty" db:"room_no"`
 	PcNo             *string   `json:"pc_no,omitempty" db:"pc_no"`
-	AllowedContest   *int64    `json:"allowed_contest,omitempty" db:"allowed_contest"`
+	AllowedContest   *string   `json:"allowed_contest,omitempty" db:"allowed_contest"`
 	CreatedAt        time.Time `json:"created_at,omitempty" db:"created_at"`
 }
 
@@ -34,7 +34,7 @@ type User struct {
 // }
 
 type WriterHandler struct {
-	contestId  *int64
+	contestId  *string
 	clanLength int
 	prefix     string
 	writer     *csv.Writer
@@ -47,7 +47,7 @@ type Handler struct {
 	Writer *WriterHandler
 }
 
-func (h *Handler) NewWriteHandler(prefix string, clanLength int, contestId int64) error {
+func (h *Handler) NewWriteHandler(prefix string, clanLength int, contestId string) error {
 	const dir = "./generated_csv/"
 	fileName := prefix + "_users.csv"
 	filePath := filepath.Join(dir, fileName)

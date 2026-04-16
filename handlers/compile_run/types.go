@@ -16,8 +16,8 @@ type Testcase struct {
 }
 
 type UserSubmission struct {
-	ProblemId  int64  `json:"problem_id"`
-	ContestId  int64  `json:"contest_id"`
+	ProblemId  string `json:"problem_id"`
+	ContestId  string `json:"contest_id"`
 	Language   string `json:"language"`
 	SourceCode string `json:"source_code"`
 }

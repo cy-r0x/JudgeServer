@@ -32,7 +32,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if submission.ProblemId == 0 || submission.ContestId == 0 {
+	if submission.ProblemId == "" || submission.ContestId == "" {
 		utils.SendResponse(w, http.StatusBadRequest, "Problem ID and Contest ID are required")
 		return
 	}
@@ -116,11 +116,11 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	contestID := uint(submission.ContestId)
+	contestID := submission.ContestId
 	newSubmission := models.Submission{
-		UserID:     uint(userId),
+		UserID:     userId,
 		Username:   username,
-		ProblemID:  uint(submission.ProblemId),
+		ProblemID:  submission.ProblemId,
 		ContestID:  &contestID,
 		Language:   submission.Language,
 		SourceCode: submission.SourceCode,
@@ -133,7 +133,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	problem.SubmissionId = int64(newSubmission.ID)
+	problem.SubmissionId = newSubmission.ID
 	problem.SourceCode = submission.SourceCode
 	problem.Language = submission.Language
 

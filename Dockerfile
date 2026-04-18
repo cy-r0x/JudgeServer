@@ -29,11 +29,6 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/judgeserver .
 
-# Copy schema files for migrations COPY --from=builder /build/schema ./schema
-
-# Copy .env file
-COPY .env .env
-
 # Expose port
 EXPOSE 8000
 

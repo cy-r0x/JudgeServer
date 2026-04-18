@@ -29,7 +29,7 @@ func Serve() {
 		os.Exit(1)
 	}
 
-	dbConn, err := db.NewConnection(config.DB)
+	dbConn, err := db.NewConnection(config)
 	if err != nil {
 		os.Exit(1)
 	}

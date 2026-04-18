@@ -77,14 +77,29 @@ This project heavily leans on the **Code-First** approach.
 
 ## 🐳 Docker Deployment
 
-The application includes a `Dockerfile` and `docker-compose.yml` for straightforward deployments.
+The application includes a `Dockerfile` and `docker-compose.yml` for straightforward containerized deployments. The Compose file automatically provisions both the Go API server (exposed on port `8000`) and a PostgreSQL 15 database instance.
 
-1. **Ensure your `.env` file exists** in the root directory.
-2. **Build and run the container:**
-   ```bash
-   docker-compose up -d --build
+1. **Update `config/config.go`:**
+   When running inside Docker, environment variables are injected natively by `docker-compose` rather than reading a `.env` file directly. You must comment out or remove the `env.Load()` lines in [config/config.go](config/config.go):
+   ```go
+   // err := env.Load()
+   // if err != nil {
+   // 	log.Fatalln("Env Not Found...")
+   // }
    ```
-   *Note: Ensure your `DB_HOST` in the `.env` file points to a reachable PostgreSQL instance from inside the Docker container (e.g. your host network IP rather than `localhost`).*
+2. **Ensure your `.env` file exists** in the root directory.
+   *Note: Because both services run on the same Docker network, ensure your `.env` sets `DB_HOST=db` instead of `localhost`.*
+3. **Create the required external network:**
+   The configuration relies on an external Docker network named `shared-net` to allow easy communication with potential execution engine containers. Create it with:
+   ```bash
+   docker network create shared-net
+   ```
+4. **Build and run the containers:**
+   ```bash
+   docker compose up -d --build
+   ```
+
+The application uses multi-stage builds (compiling with Go 1.25 on Alpine) to keep the final image minimal. Outputs like generated user files are persisted locally via the `./generated_csv` volume, and the database utilizes a dedicated Docker volume (`postgres_data`) for persistent data storage.
 
 ## 📁 Project Structure
 

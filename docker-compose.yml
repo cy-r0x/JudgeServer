@@ -13,29 +13,9 @@ services:
       - .env
     volumes:
       - ./generated_csv:/app/generated_csv
-    depends_on:
-      - db
     networks:
       - shared-net
-
-  db:
-    image: postgres:15-alpine
-    container_name: judgeserver-db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: judgenot0
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - shared-net
-
+    
 networks:
   shared-net:
     external: true
-
-volumes:
-  postgres_data:

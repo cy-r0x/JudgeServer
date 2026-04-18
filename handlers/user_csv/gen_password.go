@@ -2,17 +2,23 @@ package usercsv
 
 import (
 	"crypto/rand"
-	"encoding/base64"
+	"math/big"
 )
 
 func generatePassword() string {
 	const length = 8
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@_%^$"
 
-	raw := make([]byte, length)
-	_, err := rand.Read(raw)
-	if err != nil {
-		return "ChangeMe123!"
+	password := make([]byte, length)
+	charsetLength := big.NewInt(int64(len(charset)))
+
+	for i := range password {
+		num, err := rand.Int(rand.Reader, charsetLength)
+		if err != nil {
+			return "ChangeMe123!"
+		}
+		password[i] = charset[num.Int64()]
 	}
 
-	return base64.RawURLEncoding.EncodeToString(raw)
+	return string(password)
 }

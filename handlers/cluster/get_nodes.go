@@ -7,5 +7,5 @@ import (
 )
 
 func (h *Handler) getNodes(w http.ResponseWriter, r *http.Request) {
-	utils.SendResponse(w, 200, h.nodes)
+	utils.SendResponse(w, 200, "Nodes retrieved successfully", h.nodes)
 }

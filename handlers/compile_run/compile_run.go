@@ -27,9 +27,7 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	var submission UserSubmission
 	if err := decoder.Decode(&submission); err != nil {
 		log.Printf("Error decoding request body: %v", err)
-		utils.SendResponse(w, http.StatusBadRequest, map[string]string{
-			"error": "Invalid request payload",
-		})
+		utils.SendResponse(w, http.StatusBadRequest, " Invalid request payload", nil)
 		return
 	}
 
@@ -41,18 +39,14 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("Error fetching problem details: %v", err)
-		utils.SendResponse(w, http.StatusBadRequest, map[string]string{
-			"error": "Problem not found",
-		})
+		utils.SendResponse(w, http.StatusBadRequest, "Problem not found", nil)
 		return
 	}
 
 	testcases, err := h.fetchTestcases(submission.ProblemId, isSampleOnly)
 	if err != nil {
 		log.Printf("Error fetching testcases for problem ID %s: %v", submission.ProblemId, err)
-		utils.SendResponse(w, http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch testcases for this problem",
-		})
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch testcases for this problem", nil)
 		return
 	}
 
@@ -65,30 +59,24 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	runReq, err := json.Marshal(&problem)
 	if err != nil {
 		log.Printf("Error marshaling problem data: %v", err)
-		utils.SendResponse(w, http.StatusInternalServerError, map[string]string{
-			"error": "Failed to prepare execution request",
-		})
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to prepare execution request", nil)
 		return
 	}
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(runReq))
 	if err != nil {
-		// Check if the error is due to payload size limit
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
 			log.Printf("Payload too large: exceeded %d bytes", maxBodySize)
-			utils.SendResponse(w, http.StatusRequestEntityTooLarge, map[string]string{
-				"error": "Request payload too large",
-			})
+			utils.SendResponse(w, http.StatusRequestEntityTooLarge, "Request payload too large", nil)
+			return
+		} else {
+			log.Printf("Error sending request to execution engine: %v", err)
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to execute code", nil)
 			return
 		}
-
-		log.Printf("Error forwarding request to engine: %v", err)
-		utils.SendResponse(w, http.StatusInternalServerError, map[string]string{
-			"error": "Failed to connect to execution engine",
-		})
-		return
 	}
+
 	defer resp.Body.Close()
 
 	// Decode response from engine
@@ -97,12 +85,10 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		log.Printf("Error decoding engine response: %v", err)
-		utils.SendResponse(w, http.StatusInternalServerError, map[string]string{
-			"error": "Failed to parse execution result",
-		})
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to parse execution result", nil)
 		return
 	}
 
 	// Send successful response
-	utils.SendResponse(w, http.StatusOK, result)
+	utils.SendResponse(w, http.StatusOK, "Execution completed successfully", result)
 }

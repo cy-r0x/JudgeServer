@@ -21,7 +21,7 @@ func (h *Handler) registerNode(w http.ResponseWriter, r *http.Request) {
 	if exist {
 		node.Labels = make(map[string]string)
 		node.Labels["node"] = value
-		utils.SendResponse(w, 200, node)
+		utils.SendResponse(w, 200, "Node registered successfully", node)
 		return
 	}
 
@@ -30,5 +30,5 @@ func (h *Handler) registerNode(w http.ResponseWriter, r *http.Request) {
 	h.nodes = append(h.nodes, node)
 	h.availableNodes[node.Targets[0]] = node.Labels["node"]
 
-	utils.SendResponse(w, 200, node)
+	utils.SendResponse(w, 200, "Node registered successfully", node)
 }

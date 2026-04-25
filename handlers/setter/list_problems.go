@@ -12,7 +12,7 @@ import (
 func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found", nil)
 		return
 	}
 	setterId := payload.Sub
@@ -20,13 +20,13 @@ func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 	var problems []Problem
 	err := h.db.Model(&models.Problem{}).
 		Select("id", "title", "created_at").
-		Where("created_by = ?", setterId).
+		Where("author = ?", setterId).
 		Order("created_at DESC").
 		Scan(&problems).Error
 
 	if err != nil {
 		log.Println("Error fetching setter problems:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problems")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problems", nil)
 		return
 	}
 
@@ -34,5 +34,5 @@ func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 		problems = []Problem{}
 	}
 
-	utils.SendResponse(w, http.StatusOK, problems)
+	utils.SendResponse(w, http.StatusOK, "Problems fetched successfully", problems)
 }

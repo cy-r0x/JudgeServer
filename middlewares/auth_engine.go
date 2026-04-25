@@ -59,12 +59,12 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 
 		if err != nil {
 			log.Println(err)
-			utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
+			utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON", nil)
 			return
 		}
 		ok := VerifyToken(enginePayload, m.config.EngineKey)
 		if !ok {
-			utils.SendResponse(w, http.StatusBadRequest, "Invalid Token")
+			utils.SendResponse(w, http.StatusBadRequest, "Invalid Token", nil)
 			return
 		}
 

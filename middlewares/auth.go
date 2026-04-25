@@ -46,12 +46,12 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		if header == "" {
-			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required")
+			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required", nil)
 			return
 		}
 		headerArr := strings.Split(header, " ")
 		if len(headerArr) != 2 {
-			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format")
+			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format", nil)
 			return
 		}
 
@@ -61,7 +61,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 
 		if err != nil {
 			log.Println(err)
-			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
+			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token", nil)
 			return
 		}
 

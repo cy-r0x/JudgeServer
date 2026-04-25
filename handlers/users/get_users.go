@@ -10,33 +10,31 @@ import (
 func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	contestId := r.PathValue("contestId")
 	if contestId == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID", nil)
 		return
 	}
 
 	var users []models.User
 	// Fetch only specific fields or ignore password. With GORM, finding into User struct works naturally.
-	err := h.db.Select("id", "full_name", "username", "clan", "room_no", "pc_no").Where("allowed_contest = ?", contestId).Find(&users).Error
+	err := h.db.Select("id", "name", "username", "room_no", "pc_no", "additional_info").Where("allowed_contest = ?", contestId).Find(&users).Error
 	if err != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch users")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch users", nil)
 		return
 	}
 
-	var response []User
+	var response []UserResponse
 	for _, u := range users {
-		response = append(response, User{
-			Id:       u.ID,
-			FullName: u.FullName,
-			Username: u.Username,
-			Clan:     u.Clan,
-			RoomNo:   u.RoomNo,
-			PcNo:     u.PcNo,
+		response = append(response, UserResponse{
+			Id:             u.Id,
+			Name:           u.Name,
+			Username:       u.Username,
+			AdditionalInfo: u.AdditionalInfo,
 		})
 	}
 
 	if response == nil {
-		response = []User{}
+		response = []UserResponse{}
 	}
 
-	utils.SendResponse(w, http.StatusOK, response)
+	utils.SendResponse(w, http.StatusOK, "Users fetched successfully", response)
 }

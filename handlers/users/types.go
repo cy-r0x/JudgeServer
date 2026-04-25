@@ -11,6 +11,15 @@ type UserCreds struct {
 	Password string `json:"password"`
 }
 
+type UpdateUserPayload struct {
+	Name           *string `json:"name"`
+	Password       *string `json:"password"`
+	AdditionalInfo *string `json:"additional_info"`
+	RoomNo         *string `json:"room_no"`
+	PcNo           *string `json:"pc_no"`
+	AllowedContest *string `json:"allowed_contest"`
+}
+
 type Payload struct {
 	jwt.RegisteredClaims
 	Sub            string  `json:"sub"`
@@ -24,10 +33,10 @@ type Payload struct {
 }
 
 type UserResponse struct {
-	Id       string  `json:"id" db:"id"`
-	FullName string  `json:"full_name" db:"full_name"`
-	Username string  `json:"username" db:"username"`
-	Clan     *string `json:"clan,omitempty" db:"clan"`
+	Id             string  `json:"id" db:"id"`
+	Name           string  `json:"full_name" db:"full_name"`
+	Username       string  `json:"username" db:"username"`
+	AdditionalInfo *string `json:"additional_info,omitempty" db:"additional_info"`
 }
 
 type Handler struct {

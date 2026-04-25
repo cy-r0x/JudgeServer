@@ -7,7 +7,7 @@ import (
 
 func generatePassword() string {
 	const length = 8
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@_%^$"
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@$()!"
 
 	password := make([]byte, length)
 	charsetLength := big.NewInt(int64(len(charset)))

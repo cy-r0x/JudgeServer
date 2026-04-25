@@ -6,7 +6,6 @@ import (
 
 func NewHandler(db *gorm.DB) *Handler {
 	return &Handler{
-		db:     db,
-		Writer: nil,
+		db: db,
 	}
 }

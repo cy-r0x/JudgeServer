@@ -3,8 +3,8 @@ package usercsv
 import (
 	"encoding/csv"
 	"fmt"
+	"log"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,168 +26,169 @@ func safeIntParse(s string) int {
 func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20) // 10 MB
 	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, err.Error())
+		utils.SendResponse(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	prefix := r.FormValue("prefix")
-	clanLen := r.FormValue("clan_length")
 	contestID := r.FormValue("contest_id")
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, err.Error())
+		utils.SendResponse(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 	defer file.Close()
 
-	clanLengthInt := safeIntParse(clanLen)
 	contestID = strings.TrimSpace(contestID)
 
-	if contestID == "" || clanLengthInt == 0 || prefix == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "invalid form data")
+	if contestID == "" {
+		utils.SendResponse(w, http.StatusBadRequest, "invalid form data", nil)
 		return
 	}
 
-	err = h.NewWriteHandler(prefix, clanLengthInt, contestID)
-	if err != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "error creating csv file")
+	// Fetch Contest to get the prefix
+	var contest models.Contest
+	if err := h.db.Where("id = ?", contestID).First(&contest).Error; err != nil {
+		utils.SendResponse(w, http.StatusNotFound, "Contest not found", nil)
 		return
 	}
-	h.WriteHeader()
+	prefix := contest.UserPrefix
 
 	csvReader := csv.NewReader(file)
 	records, err := csvReader.ReadAll()
 	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "error reading csv file")
+		utils.SendResponse(w, http.StatusBadRequest, "error reading csv file", nil)
 		return
 	}
 
-	// Process users concurrently
-	type userResult struct {
-		user User
-		err  error
-		idx  int
+	if len(records) < 2 {
+		utils.SendResponse(w, http.StatusBadRequest, "CSV file is empty or missing data", nil)
+		return
 	}
 
-	results := make(chan userResult, len(records))
-	var wg sync.WaitGroup
+	// We no longer need to write a static CSV, since GetCSV reads from DB.
+	// h.NewWriteHandler(prefix, clanLengthInt, contestID)
+	// h.WriteHeader()
 
-	// Process each record concurrently
-	for idx, record := range records[1:] {
-		wg.Add(1)
-		go func(idx int, record []string) {
-			defer wg.Done()
+	// Respond immediately indicating accepted processing
+	utils.SendResponse(w, http.StatusAccepted, "Users creation started in the background", nil)
 
-			user, err := h.GenerateUser(record, idx)
-			if err != nil {
-				results <- userResult{err: fmt.Errorf("error generating user: %w", err), idx: idx}
-				return
-			}
-
-			// Hash password in parallel (CPU-intensive operation)
-			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.UnHashedPassword), bcrypt.DefaultCost)
-			if err != nil {
-				results <- userResult{err: fmt.Errorf("error hashing password: %w", err), idx: idx}
-				return
-			}
-			user.Password = string(hashedPassword)
-
-			results <- userResult{user: user, idx: idx}
-		}(idx, record)
-	}
-
-	// Wait for all goroutines to complete
+	// Process asynchronously
 	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	// Collect results in order
-	users := make([]User, len(records)-1) // Skip header row
-	for result := range results {
-		if result.err != nil {
-			utils.SendResponse(w, http.StatusInternalServerError, result.err.Error())
-			return
+		type userResult struct {
+			user User
+			err  error
+			idx  int
 		}
-		users[result.idx] = result.user
-	}
 
-	//sort the user by room no and pc no
-	sort.Slice(users, func(i, j int) bool {
-		if users[i].RoomNo == nil || users[j].RoomNo == nil {
-			return false
+		results := make(chan userResult, len(records))
+		var wg sync.WaitGroup
+
+		for idx, record := range records[1:] {
+			wg.Add(1)
+			go func(idx int, record []string) {
+				defer wg.Done()
+
+				user, err := h.GenerateUser(record, idx, prefix, contestID)
+				if err != nil {
+					results <- userResult{err: fmt.Errorf("error generating user: %w", err), idx: idx}
+					return
+				}
+
+				hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.UnHashedPassword), bcrypt.DefaultCost)
+				if err != nil {
+					results <- userResult{err: fmt.Errorf("error hashing password: %w", err), idx: idx}
+					return
+				}
+				user.Password = string(hashedPassword)
+
+				results <- userResult{user: user, idx: idx}
+			}(idx, record)
 		}
-		if *users[i].RoomNo == *users[j].RoomNo {
-			if users[i].PcNo == nil || users[j].PcNo == nil {
-				return false
+
+		go func() {
+			wg.Wait()
+			close(results)
+		}()
+
+		users := make([]User, len(records)-1)
+		hasErrors := false
+		for result := range results {
+			if result.err != nil {
+				log.Println("Error processing user CSV async:", result.err)
+				hasErrors = true
+				continue
 			}
-			return safeIntParse(*users[i].PcNo) < safeIntParse(*users[j].PcNo)
+			users[result.idx] = result.user
 		}
-		return *users[i].RoomNo < *users[j].RoomNo
-	})
 
-	// Insert all users in a single transaction
-	trx := h.db.Begin()
-	if trx.Error != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "error starting transaction")
-		return
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			trx.Rollback()
+		if hasErrors {
+			log.Println("Failed to process some users from CSV. Check logs for details.")
+			return
 		}
+
+		trx := h.db.Begin()
+		if trx.Error != nil {
+			log.Println("error starting transaction:", trx.Error)
+			return
+		}
+
+		defer func() {
+			if r := recover(); r != nil {
+				trx.Rollback()
+			}
+		}()
+
+		for _, user := range users {
+			var allowedContest *string
+			if user.AllowedContest != nil && *user.AllowedContest != "" {
+				ac := *user.AllowedContest
+				allowedContest = &ac
+			}
+
+			// Map correctly to updated models.User fields
+			role := models.RoleUser
+			if user.Role != "" {
+				role = models.Role(user.Role)
+			}
+
+			newUser := models.User{
+				Name:           user.Name,
+				Username:       user.Username,
+				Password:       user.Password,
+				Role:           role,
+				AllowedContest: allowedContest,
+				AdditionalInfo: user.AdditionalInfo,
+				RoomNo:         user.RoomNo,
+				PcNo:           user.PcNo,
+				CreatedAt:      time.Now(),
+			}
+
+			if err := trx.Create(&newUser).Error; err != nil {
+				log.Println("error registering user:", err)
+				trx.Rollback()
+				return
+			}
+
+			if allowedContest != nil {
+				creds := models.UserCreds{
+					ContestId:     *allowedContest,
+					UserId:        newUser.Id,
+					PlainPassword: user.UnHashedPassword, // Save the UNHASHED plain password here
+				}
+				if err := trx.Create(&creds).Error; err != nil {
+					log.Println("Failed to save user credentials:", err)
+					trx.Rollback()
+					return
+				}
+			}
+		}
+
+		if err := trx.Commit().Error; err != nil {
+			log.Println("error committing transaction:", err)
+			return
+		}
+
+		log.Println("Async CSV User processing successful")
 	}()
-
-	for _, user := range users {
-		err = h.WriteUser(user)
-		if err != nil {
-			trx.Rollback()
-			utils.SendResponse(w, http.StatusInternalServerError, "error writing user to CSV")
-			return
-		}
-
-		var allowedContest *string
-		if user.AllowedContest != nil {
-			ac := *user.AllowedContest
-			allowedContest = &ac
-		}
-
-		newUser := models.User{
-			FullName:       user.FullName,
-			Username:       user.Username,
-			Password:       user.Password,
-			Role:           user.Role,
-			AllowedContest: allowedContest,
-			Clan:           user.Clan,
-			RoomNo:         user.RoomNo,
-			PcNo:           user.PcNo,
-			CreatedAt:      time.Now(),
-		}
-
-		if err := trx.Create(&newUser).Error; err != nil {
-			trx.Rollback()
-			utils.SendResponse(w, http.StatusInternalServerError, "error registering user")
-			return
-		}
-	}
-
-	filePathEntry := models.Filepath{
-		ContestID: contestID,
-		FilePath:  h.Writer.FilePath,
-	}
-
-	if err := trx.Create(&filePathEntry).Error; err != nil {
-		trx.Rollback()
-		utils.SendResponse(w, http.StatusInternalServerError, "error saving file path")
-		return
-	}
-
-	if err := trx.Commit().Error; err != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "error committing transaction")
-		return
-	}
-
-	utils.SendResponse(w, http.StatusOK, "Users added successfully")
 }

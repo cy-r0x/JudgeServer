@@ -33,11 +33,8 @@ func Migrate(dbConn *gorm.DB) error {
 		&models.ContestProblem{},
 		&models.Submission{},
 		&models.Testcase{},
-		&models.Filepath{},
-		&models.ContestStanding{},
-		&models.ContestSolve{},
-		&models.ContestUserProblem{},
-		&models.ContestProblemStat{},
+		&models.UserCreds{},
+		&models.ContestProblemResult{},
 	)
 	if err != nil {
 		log.Println("Failed to AutoMigrate:", err)
@@ -53,10 +50,10 @@ func Migrate(dbConn *gorm.DB) error {
 
 	if adminCount == 0 {
 		adminUser := models.User{
-			FullName: "admin",
+			Name:     "admin",
 			Username: "admin",
 			Password: "$2a$12$Ncde3vjx7AbBXwyDlzgN5ue8PKgD1XexbvWdityKLbQHsHJAi1jKG",
-			Role:     "admin",
+			Role:     models.RoleAdmin,
 		}
 		if err := dbConn.Create(&adminUser).Error; err != nil {
 			log.Println("Failed to create default admin user:", err)

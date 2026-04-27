@@ -1,7 +1,6 @@
 package standings
 
 import (
-	"database/sql"
 	"sync"
 	"time"
 
@@ -19,8 +18,7 @@ type ProblemStatus struct {
 type UserStanding struct {
 	UserId       string          `json:"user_id"`
 	Username     string          `json:"username"`
-	FullName     string          `json:"full_name"`
-	Clan         *string         `json:"clan"`
+	Name         string          `json:"name"`
 	TotalPenalty int             `json:"total_penalty"`
 	SolvedCount  int             `json:"solved_count"`
 	Problems     []ProblemStatus `json:"problems"`
@@ -44,45 +42,6 @@ type StandingsResponse struct {
 	TotalPages         int                        `json:"total_page"`
 	Limit              int                        `json:"limit"`
 	Page               int                        `json:"page"`
-}
-
-type ContestProblem struct {
-	ProblemId string `gorm:"column:problem_id"`
-	Index     int    `gorm:"column:index"`
-	Title     string `gorm:"column:title"`
-}
-
-type ContestInfo struct {
-	Title           string    `gorm:"column:title"`
-	StartTime       time.Time `gorm:"column:start_time"`
-	DurationSeconds int64     `gorm:"column:duration_seconds"`
-}
-
-type userStandingRow struct {
-	UserId       string       `gorm:"column:user_id"`
-	Username     string       `gorm:"column:username"`
-	FullName     string       `gorm:"column:full_name"`
-	Clan         *string      `gorm:"column:clan"`
-	SolvedCount  int          `gorm:"column:solved_count"`
-	TotalPenalty int          `gorm:"column:penalty"`
-	LastSolvedAt sql.NullTime `gorm:"column:last_solved_at"`
-}
-
-type userProblemRow struct {
-	UserId       string       `gorm:"column:user_id"`
-	ProblemId    string       `gorm:"column:problem_id"`
-	ProblemIndex int          `gorm:"column:problem_index"`
-	IsSolved     bool         `gorm:"column:is_solved"`
-	SolvedAt     sql.NullTime `gorm:"column:solved_at"`
-	Penalty      int          `gorm:"column:penalty"`
-	AttemptCount int          `gorm:"column:attempt_count"`
-	FirstBlood   bool         `gorm:"column:first_blood"`
-}
-
-type problemStatsRow struct {
-	ProblemIndex   int `gorm:"column:problem_index"`
-	SolvedCount    int `gorm:"column:solved_count"`
-	AttemptedUsers int `gorm:"column:attempted_users"`
 }
 
 type Handler struct {

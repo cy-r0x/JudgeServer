@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
 func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
-
 	const limit = 100
 	page := r.URL.Query().Get("page")
 	if page == "" {
@@ -21,24 +21,22 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	crrPage, err := strconv.Atoi(page)
 	if err != nil {
 		log.Println(err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
+		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error", nil)
 		return
 	}
 
 	offset := (crrPage - 1) * limit
 
-	contestIdStr := r.PathValue("contestId")
-	if contestIdStr == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
+	contestId := r.PathValue("contestId")
+	if contestId == "" {
+		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required", nil)
 		return
 	}
-	contestId := contestIdStr
 
 	currentTime := time.Now()
 
 	h.mu.RLock()
 	entry, exists := h.Last_standings[contestId]
-
 	if exists && entry.timestamp != nil && currentTime.Sub(*entry.timestamp) < 15*time.Second {
 		response := *entry.standings
 		h.mu.RUnlock()
@@ -61,208 +59,148 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		response.Limit = limit
 		response.Page = crrPage
 
-		utils.SendResponse(w, http.StatusOK, response)
+		utils.SendResponse(w, http.StatusOK, nil, response)
 		return
 	}
 	h.mu.RUnlock()
 
-	// Fetch all data in parallel using goroutines
+	var contest models.Contest
+	var contestProblems []models.ContestProblem
+	var problemResults []models.ContestProblemResult
+	var fetchErr error
+
 	var wg sync.WaitGroup
-	var contestInfo ContestInfo
-	var contestProblems []ContestProblem
-	var userStandings []userStandingRow
-	var userProblems []userProblemRow
-	var stats []problemStatsRow
-	var errChan = make(chan error, 5)
+	wg.Add(3)
 
-	// Query 1: Fetch contest info
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Raw(`SELECT title, start_time, duration_seconds FROM contests WHERE id = ?`, contestId).Scan(&contestInfo).Error
-		if err != nil {
-			errChan <- err
-		}
+		fetchErr = h.db.Where("id = ?", contestId).First(&contest).Error
 	}()
 
-	// Query 2: Fetch contest problems
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT cp.problem_id, cp.index, p.title
-			FROM contest_problems cp
-			JOIN problems p ON p.id = cp.problem_id
-			WHERE cp.contest_id = ? 
-			ORDER BY cp.index ASC
-		`, contestId).Scan(&contestProblems).Error
-		if err != nil {
-			errChan <- err
-		}
+		fetchErr = h.db.Where("contest_id = ?", contestId).Order("\"index\" ASC").Find(&contestProblems).Error
 	}()
 
-	// Query 3: Fetch user standings
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT 
-				u.id AS user_id,
-				u.username,
-				u.full_name,
-				u.clan,
-				COALESCE(cs.solved_count, 0) AS solved_count,
-				COALESCE(cs.penalty, 0) AS penalty,
-				cs.last_solved_at
-			FROM (
-				SELECT DISTINCT user_id 
-				FROM submissions 
-				WHERE contest_id = ?
-			) participants
-			JOIN users u ON u.id = participants.user_id
-			LEFT JOIN contest_standings cs ON cs.contest_id = ? AND cs.user_id = participants.user_id
-			ORDER BY COALESCE(cs.solved_count, 0) DESC, COALESCE(cs.penalty, 0) ASC, cs.last_solved_at ASC, u.id ASC
-		`, contestId, contestId).Scan(&userStandings).Error
-		if err != nil {
-			errChan <- err
-		}
+		fetchErr = h.db.Where("contest_id = ?", contestId).
+			Preload("User").
+			Preload("Problem").
+			Find(&problemResults).Error
 	}()
 
-	// Query 4: Fetch user-problem details
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT 
-				user_id,
-				problem_id,
-				problem_index,
-				is_solved,
-				solved_at,
-				penalty,
-				attempt_count,
-				first_blood
-			FROM contest_user_problems
-			WHERE contest_id = ?
-			ORDER BY user_id, problem_index
-		`, contestId).Scan(&userProblems).Error
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Query 5: Fetch problem statistics
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT 
-				problem_index,
-				solved_count,
-				attempted_users
-			FROM contest_problem_stats
-			WHERE contest_id = ?
-			ORDER BY problem_index
-		`, contestId).Scan(&stats).Error
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Wait for all queries to complete
 	wg.Wait()
-	close(errChan)
 
-	// Check for any errors
-	for err := range errChan {
-		log.Println("Database query error:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data")
+	if fetchErr != nil {
+		log.Println(fetchErr)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data", nil)
 		return
 	}
 
-	// Build map for efficient lookup
-	userProblemsMap := make(map[string]map[string]userProblemRow)
-	for _, up := range userProblems {
-		if _, exists := userProblemsMap[up.UserId]; !exists {
-			userProblemsMap[up.UserId] = make(map[string]userProblemRow)
+	// Build user standings from ContestProblemResult
+	userData := make(map[string]*userStandingData)
+	for _, pr := range problemResults {
+		if _, exists := userData[pr.UserId]; !exists {
+			userData[pr.UserId] = &userStandingData{
+				User:     &pr.User,
+				Problems: make(map[string]*models.ContestProblemResult),
+			}
 		}
-		userProblemsMap[up.UserId][up.ProblemId] = up
+		userData[pr.UserId].Problems[pr.ProblemId] = &pr
 	}
 
-	standings := make([]UserStanding, 0, len(userStandings))
-	for _, us := range userStandings {
-		userStanding := UserStanding{
-			UserId:       us.UserId,
-			Username:     us.Username,
-			FullName:     us.FullName,
-			Clan:         us.Clan,
-			SolvedCount:  us.SolvedCount,
-			TotalPenalty: us.TotalPenalty,
-			Problems:     make([]ProblemStatus, 0, len(contestProblems)),
-		}
+	standings := make([]UserStanding, 0, len(userData))
+	for userId, ud := range userData {
+		solvedCount := 0
+		totalPenalty := 0
+		var lastSolvedAt *time.Time
 
-		if us.LastSolvedAt.Valid {
-			userStanding.LastSolvedAt = &us.LastSolvedAt.Time
-		}
-
-		userProblemData := userProblemsMap[us.UserId]
-
+		problemStatuses := make([]ProblemStatus, 0, len(contestProblems))
 		for _, cp := range contestProblems {
-			up, hasData := userProblemData[cp.ProblemId]
-
-			problemStatus := ProblemStatus{
-				Attempts:   0,
+			pr, hasResult := ud.Problems[cp.ProblemID]
+			status := ProblemStatus{
 				Solved:     false,
+				Attempts:   0,
 				Penalty:    0,
 				FirstBlood: false,
 			}
 
-			if hasData {
-				problemStatus.Attempts = up.AttemptCount
-				problemStatus.Solved = up.IsSolved
-				problemStatus.Penalty = up.Penalty
-				problemStatus.FirstBlood = up.FirstBlood
-
-				if up.SolvedAt.Valid {
-					problemStatus.FirstSolvedAt = &up.SolvedAt.Time
+			if hasResult {
+				if pr.IsSolved {
+					solvedCount++
+					totalPenalty += pr.Penalty
+					if lastSolvedAt == nil || (pr.SolvedAt != nil && pr.SolvedAt.After(*lastSolvedAt)) {
+						lastSolvedAt = pr.SolvedAt
+					}
+				}
+				status.Solved = pr.IsSolved
+				status.Attempts = pr.WrongAttempts
+				status.Penalty = pr.Penalty
+				status.FirstBlood = pr.IsFirstBlood
+				if pr.SolvedAt != nil {
+					status.FirstSolvedAt = pr.SolvedAt
 				}
 			}
 
-			userStanding.Problems = append(userStanding.Problems, problemStatus)
+			problemStatuses = append(problemStatuses, status)
 		}
 
-		standings = append(standings, userStanding)
+		standings = append(standings, UserStanding{
+			UserId:       userId,
+			Username:     ud.User.Username,
+			Name:         ud.User.Name,
+			SolvedCount:  solvedCount,
+			TotalPenalty: totalPenalty,
+			Problems:     problemStatuses,
+			LastSolvedAt: lastSolvedAt,
+		})
 	}
 
-	// Build problem mapping and stats
-	problem_mapping := make(map[int]string)
-	for _, cp := range contestProblems {
-		problem_mapping[cp.Index] = cp.ProblemId
+	// Sort standings: by solved count desc, then penalty asc, then last solved asc, then user id asc
+	sortUserStandings(standings)
+
+	// Build problem mapping
+	problemMapping := make(map[int]string)
+	for i, cp := range contestProblems {
+		problemMapping[i+1] = cp.ProblemID
 	}
 
-	problem_solve_status := make(map[int]ProblemSolveStatus)
-	for _, stat := range stats {
-		problem_solve_status[stat.ProblemIndex] = ProblemSolveStatus{
-			Solved:    stat.SolvedCount,
-			Attempted: stat.AttemptedUsers,
+	// Compute problem solve status
+	problemSolveStatus := make(map[int]ProblemSolveStatus)
+	for i := range contestProblems {
+		problemSolveStatus[i+1] = ProblemSolveStatus{Solved: 0, Attempted: 0}
+	}
+	for _, pr := range problemResults {
+		cpIndex := 0
+		for i, cp := range contestProblems {
+			if cp.ProblemID == pr.ProblemId {
+				cpIndex = i + 1
+				break
+			}
+		}
+		if ps, exists := problemSolveStatus[cpIndex]; exists {
+			if pr.IsSolved {
+				ps.Solved++
+			}
+			ps.Attempted++
+			problemSolveStatus[cpIndex] = ps
 		}
 	}
 
 	response := StandingsResponse{
 		ContestId:          contestId,
-		ContestTitle:       contestInfo.Title,
-		ProblemMapping:     problem_mapping,
+		ContestTitle:       contest.Title,
+		ProblemMapping:     problemMapping,
 		Standings:          standings,
-		StartTime:          contestInfo.StartTime,
-		DurationSeconds:    contestInfo.DurationSeconds,
-		ProblemSolveStatus: problem_solve_status,
+		StartTime:          contest.StartTime,
+		DurationSeconds:    contest.DurationSeconds,
+		ProblemSolveStatus: problemSolveStatus,
 		TotalItem:          len(standings),
 		TotalPages:         (len(standings) + limit - 1) / limit,
 		Limit:              limit,
 		Page:               crrPage,
 	}
-
-	cachedResponse := response
 
 	h.mu.Lock()
 	h.Last_standings[contestId] = struct {
@@ -270,7 +208,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		standings *StandingsResponse
 	}{
 		timestamp: &currentTime,
-		standings: &cachedResponse,
+		standings: &response,
 	}
 	h.mu.Unlock()
 
@@ -286,5 +224,41 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		response.Standings = response.Standings[start:end]
 	}
 
-	utils.SendResponse(w, http.StatusOK, response)
+	utils.SendResponse(w, http.StatusOK, nil, response)
+}
+
+type userStandingData struct {
+	User     *models.User
+	Problems map[string]*models.ContestProblemResult
+}
+
+func sortUserStandings(standings []UserStanding) {
+	for i := 0; i < len(standings); i++ {
+		for j := i + 1; j < len(standings); j++ {
+			if lessUserStanding(standings[j], standings[i]) {
+				standings[i], standings[j] = standings[j], standings[i]
+			}
+		}
+	}
+}
+
+func lessUserStanding(a, b UserStanding) bool {
+	if a.SolvedCount != b.SolvedCount {
+		return a.SolvedCount > b.SolvedCount
+	}
+	if a.TotalPenalty != b.TotalPenalty {
+		return a.TotalPenalty < b.TotalPenalty
+	}
+	if a.LastSolvedAt != nil && b.LastSolvedAt != nil {
+		if !a.LastSolvedAt.Equal(*b.LastSolvedAt) {
+			return a.LastSolvedAt.Before(*b.LastSolvedAt)
+		}
+	}
+	if a.LastSolvedAt == nil && b.LastSolvedAt != nil {
+		return true
+	}
+	if a.LastSolvedAt != nil && b.LastSolvedAt == nil {
+		return false
+	}
+	return a.UserId < b.UserId
 }

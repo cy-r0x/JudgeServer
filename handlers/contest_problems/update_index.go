@@ -12,13 +12,13 @@ func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var contestProblems []ContestProblem
 	if err := decoder.Decode(&contestProblems); err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON", nil)
 		return
 	}
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to start transaction")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to start transaction", nil)
 		return
 	}
 	defer func() {
@@ -36,7 +36,7 @@ func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
 
 		if result.Error != nil {
 			tx.Rollback()
-			utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem index")
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem index", nil)
 			return
 		}
 
@@ -45,15 +45,15 @@ func (h *Handler) UpdateContestIndex(w http.ResponseWriter, r *http.Request) {
 
 	if totalRowsAffected == 0 {
 		tx.Rollback()
-		utils.SendResponse(w, http.StatusNotFound, "No contest problems updated")
+		utils.SendResponse(w, http.StatusNotFound, "No contest problems updated", nil)
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to commit transaction")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to commit transaction", nil)
 		return
 	}
 
-	utils.SendResponse(w, http.StatusOK, contestProblems)
+	utils.SendResponse(w, http.StatusOK, contestProblems, nil)
 }

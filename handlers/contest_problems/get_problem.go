@@ -11,7 +11,7 @@ import (
 func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	contestId := r.PathValue("contestId")
 	if contestId == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid contest ID", nil)
 		return
 	}
 
@@ -19,33 +19,33 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	var countContest int64
 	if err := h.db.Model(&models.Contest{}).Where("id = ?", contestId).Count(&countContest).Error; err != nil {
 		log.Println("Failed to check contest existence:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems", nil)
 		return
 	}
 	if countContest == 0 {
-		utils.SendResponse(w, http.StatusNotFound, "Contest does not exist")
+		utils.SendResponse(w, http.StatusNotFound, "Contest does not exist", nil)
 		return
 	}
 
 	// Get all contest problems with problem details and author information in one optimized query
 	var contestProblems []ContestProblem
 	query := `
-		SELECT 
+		SELECT
 			cp.contest_id,
 			cp.problem_id,
 			cp.index,
 			p.title as problem_name,
-			COALESCE(u.full_name, 'Unknown') as problem_author
+			COALESCE(u.name, 'Unknown') as problem_author
 		FROM contest_problems cp
 		JOIN problems p ON cp.problem_id = p.id
-		LEFT JOIN users u ON p.created_by = u.id
+		LEFT JOIN users u ON p.author = u.id
 		WHERE cp.contest_id = ?
 		ORDER BY cp.index ASC
 	`
 
 	if err := h.db.Raw(query, contestId).Scan(&contestProblems).Error; err != nil {
 		log.Println("Failed to get contest problems:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems", nil)
 		return
 	}
 
@@ -53,5 +53,5 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 		contestProblems = []ContestProblem{}
 	}
 
-	utils.SendResponse(w, http.StatusOK, contestProblems)
+	utils.SendResponse(w, http.StatusOK, contestProblems, nil)
 }

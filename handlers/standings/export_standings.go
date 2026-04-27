@@ -5,139 +5,96 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/judgenot0/judge-backend/models"
 	"github.com/judgenot0/judge-backend/utils"
 )
 
 type ExportedUserStanding struct {
-	FullName   string  `json:"full_name"`
-	Clan       *string `json:"clan"`
-	SolveCount int     `json:"solve_count"`
-	Solved     []int   `json:"solved"`
+	Name       string `json:"name"`
+	SolveCount int    `json:"solve_count"`
+	Solved     []int  `json:"solved"`
 }
 
 func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	contestIdStr := r.PathValue("contestId")
 	if contestIdStr == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required")
+		utils.SendResponse(w, http.StatusBadRequest, "Contest ID is required", nil)
 		return
 	}
 	contestId := contestIdStr
 
-	// Fetch all data in parallel using goroutines
+	var contestProblems []models.ContestProblem
+	var problemResults []models.ContestProblemResult
+	var fetchErr error
+
 	var wg sync.WaitGroup
-	var contestProblems []ContestProblem
-	var userStandings []userStandingRow
-	var userProblems []userProblemRow
-	var errChan = make(chan error, 3)
+	wg.Add(2)
 
-	// Query 1: Fetch contest problems
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT cp.problem_id, cp.index, p.title
-			FROM contest_problems cp
-			JOIN problems p ON p.id = cp.problem_id
-			WHERE cp.contest_id = ? 
-			ORDER BY cp.index ASC
-		`, contestId).Scan(&contestProblems).Error
-		if err != nil {
-			errChan <- err
-		}
+		fetchErr = h.db.Where("contest_id = ?", contestId).Order("\"index\" ASC").Find(&contestProblems).Error
 	}()
 
-	// Query 2: Fetch user standings
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT 
-				u.id AS user_id,
-				u.username,
-				u.full_name,
-				u.clan,
-				COALESCE(cs.solved_count, 0) AS solved_count,
-				COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0) AS penalty,
-				cs.last_solved_at
-			FROM (
-				SELECT DISTINCT user_id 
-				FROM submissions 
-				WHERE contest_id = ?
-			) participants
-			JOIN users u ON u.id = participants.user_id
-			LEFT JOIN contest_standings cs ON cs.contest_id = ? AND cs.user_id = participants.user_id
-			ORDER BY COALESCE(cs.solved_count, 0) DESC, (COALESCE(cs.penalty, 0) + COALESCE(cs.wrong_attempts, 0)) ASC, u.id ASC
-		`, contestId, contestId).Scan(&userStandings).Error
-		if err != nil {
-			errChan <- err
-		}
+		fetchErr = h.db.Where("contest_id = ?", contestId).
+			Preload("User").
+			Find(&problemResults).Error
 	}()
 
-	// Query 3: Fetch user-problem details
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := h.db.Raw(`
-			SELECT 
-				user_id,
-				problem_id,
-				problem_index,
-				is_solved,
-				solved_at,
-				penalty,
-				attempt_count,
-				first_blood
-			FROM contest_user_problems
-			WHERE contest_id = ?
-			ORDER BY user_id, problem_index
-		`, contestId).Scan(&userProblems).Error
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Wait for all queries to complete
 	wg.Wait()
-	close(errChan)
 
-	// Check for any errors
-	for err := range errChan {
-		log.Println("Database query error:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data")
+	if fetchErr != nil {
+		log.Println(fetchErr)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data", nil)
 		return
 	}
 
-	// Build map for efficient lookup
-	userProblemsMap := make(map[string]map[string]userProblemRow)
-	for _, up := range userProblems {
-		if _, exists := userProblemsMap[up.UserId]; !exists {
-			userProblemsMap[up.UserId] = make(map[string]userProblemRow)
-		}
-		userProblemsMap[up.UserId][up.ProblemId] = up
+	// Build user -> solved problems mapping
+	type userExportedData struct {
+		Name       string
+		SolvedCount int
+		Solved      map[int]bool // index -> solved
 	}
 
-	// Build exported standings
-	exportedStandings := make([]ExportedUserStanding, 0, len(userStandings))
-	for _, us := range userStandings {
-		solved := make([]int, 0)
-		userProblemData := userProblemsMap[us.UserId]
-
-		for _, cp := range contestProblems {
-			up, hasData := userProblemData[cp.ProblemId]
-			if hasData && up.IsSolved {
-				solved = append(solved, cp.Index)
+	userData := make(map[string]*userExportedData)
+	for _, pr := range problemResults {
+		if _, exists := userData[pr.UserId]; !exists {
+			userData[pr.UserId] = &userExportedData{
+				Name:  pr.User.Name,
+				Solved: make(map[int]bool),
 			}
 		}
-
-		exportedStanding := ExportedUserStanding{
-			FullName:   us.FullName,
-			Clan:       us.Clan,
-			SolveCount: us.SolvedCount,
-			Solved:     solved,
+		if pr.IsSolved {
+			userData[pr.UserId].SolvedCount++
 		}
-
-		exportedStandings = append(exportedStandings, exportedStanding)
 	}
 
-	utils.SendResponse(w, http.StatusOK, exportedStandings)
+	// Map problem ID to index for each user
+	for _, pr := range problemResults {
+		if pr.IsSolved {
+			for i, cp := range contestProblems {
+				if cp.ProblemID == pr.ProblemId {
+					userData[pr.UserId].Solved[i+1] = true
+					break
+				}
+			}
+		}
+	}
+
+	exportedStandings := make([]ExportedUserStanding, 0, len(userData))
+	for _, ud := range userData {
+		solved := make([]int, 0, len(ud.Solved))
+		for idx := range ud.Solved {
+			solved = append(solved, idx)
+		}
+
+		exportedStandings = append(exportedStandings, ExportedUserStanding{
+			Name:       ud.Name,
+			SolveCount: ud.SolvedCount,
+			Solved:     solved,
+		})
+	}
+
+	utils.SendResponse(w, http.StatusOK, nil, exportedStandings)
 }

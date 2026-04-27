@@ -14,11 +14,11 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	var contestProblem ContestProblem
 	err := decoder.Decode(&contestProblem)
 	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON", nil)
 		return
 	}
 	if contestProblem.ContestId == "" || contestProblem.ProblemId == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Contest ID and Problem ID are required")
+		utils.SendResponse(w, http.StatusBadRequest, "Contest ID and Problem ID are required", nil)
 		return
 	}
 
@@ -26,46 +26,46 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	var countContest int64
 	if err = h.db.Model(&models.Contest{}).Where("id = ?", contestProblem.ContestId).Count(&countContest).Error; err != nil {
 		log.Println("Failed to check contest existence:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 	if countContest == 0 {
-		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist")
+		utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist", nil)
 		return
 	}
 
 	// Get problem details and author information in a single optimized query using GORM Joins
 	type ProblemDetails struct {
-		Title    string `gorm:"column:title"`
-		FullName string `gorm:"column:full_name"`
+		Title string `gorm:"column:title"`
+		Name  string `gorm:"column:name"`
 	}
 
 	var problemDetails ProblemDetails
 	query := `
-		SELECT p.title, u.full_name 
-		FROM problems p 
-		LEFT JOIN users u ON p.created_by = u.id 
+		SELECT p.title, u.name
+		FROM problems p
+		LEFT JOIN users u ON p.author = u.id
 		WHERE p.id = ?
 	`
 
 	if err = h.db.Raw(query, contestProblem.ProblemId).Scan(&problemDetails).Error; err != nil {
 		log.Println("Failed to get problem details:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 	if problemDetails.Title == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Problem does not exist")
+		utils.SendResponse(w, http.StatusBadRequest, "Problem does not exist", nil)
 		return
 	}
 
 	// Set problem details in the response struct
 	contestProblem.ProblemName = problemDetails.Title
-	contestProblem.ProblemAuthor = problemDetails.FullName
+	contestProblem.ProblemAuthor = problemDetails.Name
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
 		log.Println("Failed to begin transaction:", tx.Error)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 	defer func() {
@@ -79,12 +79,12 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ? AND problem_id = ?", contestProblem.ContestId, contestProblem.ProblemId).Count(&existsCount).Error; err != nil {
 		log.Println("Failed to check existing assignment:", err)
 		tx.Rollback()
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 	if existsCount > 0 {
 		tx.Rollback()
-		utils.SendResponse(w, http.StatusConflict, "Problem already assigned to this contest")
+		utils.SendResponse(w, http.StatusConflict, "Problem already assigned to this contest", nil)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ?", contestProblem.ContestId).Count(&count).Error; err != nil {
 		log.Println("Failed to count contest problems:", err)
 		tx.Rollback()
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 
@@ -108,15 +108,15 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	if err = tx.Create(&newCP).Error; err != nil {
 		log.Println("Failed to insert contest problem:", err)
 		tx.Rollback()
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 
 	if err = tx.Commit().Error; err != nil {
 		log.Println("Failed to commit contest problem assignment:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 
-	utils.SendResponse(w, http.StatusOK, contestProblem)
+	utils.SendResponse(w, http.StatusOK, contestProblem, nil)
 }

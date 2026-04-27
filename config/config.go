@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"os"
+
+	env "github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -22,6 +24,8 @@ var err error
 
 func loadConfig() (*Config, error) {
 	var config Config
+
+	env.Load()
 
 	http_port := os.Getenv("HTTP_PORT")
 	if http_port == "" {

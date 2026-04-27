@@ -17,7 +17,6 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert start time to UTC
 	startTime := reqContest.StartTime.UTC()
 	endTime := reqContest.EndTime.UTC()
 	var description *string
@@ -36,14 +35,9 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 
 	err = h.db.Create(&newContest).Error
 	if err != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create contest", nil)
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create contest", err)
 		return
 	}
 
-	reqContest.Id = newContest.Id
-	reqContest.CreatedAt = newContest.CreatedAt
-	reqContest.StartTime = newContest.StartTime
-	reqContest.EndTime = newContest.EndTime
-
-	utils.SendResponse(w, http.StatusCreated, nil, reqContest)
+	utils.SendResponse(w, http.StatusCreated, "Contest created successfully", nil)
 }

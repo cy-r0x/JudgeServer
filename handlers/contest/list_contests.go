@@ -30,5 +30,5 @@ func (h *Handler) ListContests(w http.ResponseWriter, r *http.Request) {
 		contests = []Contest{}
 	}
 
-	utils.SendResponse(w, http.StatusOK, nil, contests)
+	utils.SendResponse(w, http.StatusOK, "Contests fetched successfully", contests)
 }

@@ -97,7 +97,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 		// Count total solvers per problem
 		type solverCount struct {
-			ProblemId  string
+			ProblemId   string
 			SolvedCount int
 		}
 		var solverCounts []solverCount
@@ -150,5 +150,5 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		Problems: problems,
 	}
 
-	utils.SendResponse(w, http.StatusOK, nil, response)
+	utils.SendResponse(w, http.StatusOK, "Contest fetched successfully", response)
 }

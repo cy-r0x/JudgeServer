@@ -12,17 +12,17 @@ type Contest struct {
 	Title           string    `json:"title" db:"title"`
 	UserPrefix      string    `json:"userPrefix" db:"user_prefix"`
 	Description     string    `json:"description" db:"description"`
-	StartTime       time.Time `json:"start_time" db:"start_time"`
+	StartTime       time.Time `json:"startTime" db:"start_time"`
 	EndTime         time.Time `json:"endTime" db:"end_time"`
-	DurationSeconds int64     `json:"duration_seconds" db:"duration_seconds"`
+	DurationSeconds int64     `json:"durationSeconds" db:"duration_seconds"`
 	Status          string    `json:"status"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt       time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt       time.Time `json:"updatedAt" db:"updated_at"`
 }
 
 type ContestProblem struct {
-	ContestId string `json:"contest_id" db:"contest_id"`
-	ProblemId string `json:"problem_id" db:"problem_id"`
+	ContestId string `json:"contestId" db:"contest_id"`
+	ProblemId string `json:"problemId" db:"problem_id"`
 	Index     int    `json:"index" db:"index"`
 }
 

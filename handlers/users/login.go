@@ -85,5 +85,5 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, cookie)
 
 	// success response
-	utils.SendResponse(w, http.StatusOK, "Login Sucessful", payload)
+	utils.SendResponse(w, http.StatusOK, "Login Sucessful", nil)
 }

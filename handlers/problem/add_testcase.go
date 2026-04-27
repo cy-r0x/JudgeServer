@@ -14,12 +14,12 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 	var testcase Testcase
 	if err := decoder.Decode(&testcase); err != nil {
 		log.Println("Error decoding request body:", err)
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid request body")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid request body", nil)
 		return
 	}
 
 	if testcase.ProblemId == "" {
-		utils.SendResponse(w, http.StatusBadRequest, "Problem ID is required")
+		utils.SendResponse(w, http.StatusBadRequest, "Problem ID is required", nil)
 		return
 	}
 
@@ -33,12 +33,12 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 	err := h.db.Create(&newTestcase).Error
 	if err != nil {
 		log.Println("Error creating testcase:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcase")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcase", nil)
 		return
 	}
 
-	testcase.Id = newTestcase.ID
+	testcase.Id = newTestcase.Id
 	testcase.CreatedAt = newTestcase.CreatedAt
 
-	utils.SendResponse(w, http.StatusOK, testcase)
+	utils.SendResponse(w, http.StatusOK, nil, testcase)
 }

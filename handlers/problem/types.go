@@ -18,7 +18,6 @@ type Testcase struct {
 type Problem struct {
 	Id                 string              `json:"id" gorm:"column:id"`
 	Title              string              `json:"title" gorm:"column:title"`
-	Slug               string              `json:"slug" gorm:"column:slug"`
 	Statement          string              `json:"statement" gorm:"column:statement"`
 	InputStatement     string              `json:"input_statement" gorm:"column:input_statement"`
 	OutputStatement    string              `json:"output_statement" gorm:"column:output_statement"`
@@ -30,8 +29,9 @@ type Problem struct {
 	CheckerPrecision   *string             `json:"checker_precision" gorm:"column:checker_precision"`
 	StartTime          *time.Time          `json:"start_time,omitempty" gorm:"column:start_time"`
 	DurationSeconds    *int64              `json:"duration_seconds,omitempty" gorm:"column:duration_seconds"`
-	CreatedBy          string              `json:"created_by" gorm:"column:created_by"`
+	Author             string              `json:"author" gorm:"column:author"`
 	CreatedAt          time.Time           `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt          time.Time           `json:"updated_at" gorm:"column:updated_at"`
 	LastSubmission     *LastSubmissionData `json:"last_submission,omitempty" gorm:"-"`
 }
 

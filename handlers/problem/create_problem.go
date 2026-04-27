@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -17,14 +16,14 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 
 	payload, ok := r.Context().Value("user").(*middlewares.Payload)
 	if !ok {
-		utils.SendResponse(w, http.StatusUnauthorized, "User information not found")
+		utils.SendResponse(w, http.StatusUnauthorized, "User information not found", nil)
 		return
 	}
 
 	var reqProblem Problem
 	err := decoder.Decode(&reqProblem)
 	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload", nil)
 		return
 	}
 
@@ -36,13 +35,12 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 	reqProblem.CheckerStrictSpace = false
 	reqProblem.CheckerType = "string"
 	reqProblem.CheckerPrecision = nil
-	reqProblem.CreatedBy = payload.Sub
-	reqProblem.Slug = strings.ReplaceAll(strings.ToLower(reqProblem.Title), " ", "-")
+	reqProblem.Author = payload.Sub
 	reqProblem.CreatedAt = time.Now()
+	reqProblem.UpdatedAt = time.Now()
 
 	newProblem := models.Problem{
 		Title:              reqProblem.Title,
-		Slug:               reqProblem.Slug,
 		Statement:          reqProblem.Statement,
 		InputStatement:     reqProblem.InputStatement,
 		OutputStatement:    reqProblem.OutputStatement,
@@ -51,20 +49,22 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 		CheckerType:        reqProblem.CheckerType,
 		CheckerStrictSpace: reqProblem.CheckerStrictSpace,
 		CheckerPrecision:   reqProblem.CheckerPrecision,
-		CreatedByID:        &reqProblem.CreatedBy,
+		Author:             reqProblem.Author,
 		CreatedAt:          reqProblem.CreatedAt,
+		UpdatedAt:          reqProblem.UpdatedAt,
 	}
 
 	err = h.db.Create(&newProblem).Error
 	if err != nil {
 		log.Println("Error creating problem:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create problem")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create problem", nil)
 		return
 	}
 
-	reqProblem.Id = newProblem.ID
+	reqProblem.Id = newProblem.Id
 	reqProblem.CreatedAt = newProblem.CreatedAt
+	reqProblem.UpdatedAt = newProblem.UpdatedAt
 	reqProblem.Testcases = []Testcase{}
 
-	utils.SendResponse(w, http.StatusCreated, reqProblem)
+	utils.SendResponse(w, http.StatusCreated, nil, reqProblem)
 }

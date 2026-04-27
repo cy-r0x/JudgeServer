@@ -23,7 +23,7 @@ func (h *Handler) fetchTestcases(problemId string, isSample bool) ([]Testcase, e
 	var testcases []Testcase
 	for _, tc := range dbTestcases {
 		testcases = append(testcases, Testcase{
-			Id:             tc.ID,
+			Id:             tc.Id,
 			ProblemId:      tc.ProblemID,
 			Input:          tc.Input,
 			ExpectedOutput: tc.ExpectedOutput,

@@ -12,21 +12,21 @@ func (h *Handler) DeleteTestcase(w http.ResponseWriter, r *http.Request) {
 	testcaseId := r.PathValue("testcaseId")
 	if testcaseId == "" {
 		log.Println("missing testcase ID")
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid testcase ID")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid testcase ID", nil)
 		return
 	}
 
 	result := h.db.Delete(&models.Testcase{}, "id = ?", testcaseId)
 	if result.Error != nil {
 		log.Println("Error deleting testcase:", result.Error)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete testcase")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete testcase", nil)
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		utils.SendResponse(w, http.StatusNotFound, "Testcase not found")
+		utils.SendResponse(w, http.StatusNotFound, "Testcase not found", nil)
 		return
 	}
 
-	utils.SendResponse(w, http.StatusOK, map[string]string{"message": "Testcase deleted successfully"})
+	utils.SendResponse(w, http.StatusOK, nil, map[string]string{"message": "Testcase deleted successfully"})
 }

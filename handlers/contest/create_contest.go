@@ -13,12 +13,13 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 	var reqContest Contest
 	err := decoder.Decode(&reqContest)
 	if err != nil {
-		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON")
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON", nil)
 		return
 	}
 
 	// Convert start time to UTC
 	startTime := reqContest.StartTime.UTC()
+	endTime := reqContest.EndTime.UTC()
 	var description *string
 	if reqContest.Description != "" {
 		description = &reqContest.Description
@@ -26,20 +27,23 @@ func (h *Handler) CreateContest(w http.ResponseWriter, r *http.Request) {
 
 	newContest := models.Contest{
 		Title:           reqContest.Title,
+		UserPrefix:      reqContest.UserPrefix,
 		Description:     description,
 		StartTime:       startTime,
+		EndTime:         endTime,
 		DurationSeconds: reqContest.DurationSeconds,
 	}
 
 	err = h.db.Create(&newContest).Error
 	if err != nil {
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create contest")
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create contest", nil)
 		return
 	}
 
-	reqContest.Id = newContest.ID
+	reqContest.Id = newContest.Id
 	reqContest.CreatedAt = newContest.CreatedAt
 	reqContest.StartTime = newContest.StartTime
+	reqContest.EndTime = newContest.EndTime
 
-	utils.SendResponse(w, http.StatusCreated, reqContest)
+	utils.SendResponse(w, http.StatusCreated, nil, reqContest)
 }

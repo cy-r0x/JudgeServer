@@ -1,7 +1,6 @@
 package contest
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"strings"
@@ -29,19 +28,14 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 	contestId := r.PathValue("contestId")
 	if contestId == "" {
-		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found")
+		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found", nil)
 		return
 	}
 
-	// Get Contest Information
 	var dbContest models.Contest
-	err := h.db.
-		Select("id", "title", "description", "start_time", "duration_seconds", "created_at").
-		Where("id = ?", contestId).
-		First(&dbContest).Error
-
+	err := h.db.Where("id = ?", contestId).First(&dbContest).Error
 	if err != nil {
-		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found")
+		utils.SendResponse(w, http.StatusNotFound, "Contest Not Found", nil)
 		return
 	}
 
@@ -51,21 +45,22 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contest := Contest{
-		Id:              dbContest.ID,
+		Id:              dbContest.Id,
 		Title:           dbContest.Title,
+		UserPrefix:      dbContest.UserPrefix,
 		Description:     description,
 		StartTime:       dbContest.StartTime,
+		EndTime:         dbContest.EndTime,
 		DurationSeconds: dbContest.DurationSeconds,
 		CreatedAt:       dbContest.CreatedAt,
+		UpdatedAt:       dbContest.UpdatedAt,
 	}
 
 	// Calculate contest status
 	now := time.Now()
-	endTime := contest.StartTime.Add(time.Duration(contest.DurationSeconds) * time.Second)
-
 	if now.Before(contest.StartTime) {
 		contest.Status = "UPCOMING"
-	} else if now.After(endTime) {
+	} else if now.After(contest.EndTime) {
 		contest.Status = "ENDED"
 	} else {
 		contest.Status = "RUNNING"
@@ -75,7 +70,6 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	type Problem struct {
 		Id           string `json:"id"`
 		Title        string `json:"title"`
-		Slug         string `json:"slug"`
 		Index        int    `json:"index"`
 		Solved       bool   `json:"solved"`
 		Attempted    bool   `json:"attempted"`
@@ -85,39 +79,62 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	problems := []Problem{}
 
 	if contest.Status != "UPCOMING" {
-		// Optimized query using pre-aggregated stats
-		// Note: GORM Raw querying is used for complex joins with COALESCE and dynamic parameter checking.
-		problemsQuery := `
-			SELECT 
-				cp.problem_id as id, 
-				p.title, 
-				p.slug, 
-				cp.index,
-				COALESCE(cup.is_solved, false) as solved,
-				COALESCE(cup.attempt_count > 0, false) as attempted,
-				COALESCE(cps.solved_count, 0) as total_solvers
-			FROM contest_problems cp
-			JOIN problems p ON cp.problem_id = p.id
-			LEFT JOIN contest_problem_stats cps ON cps.contest_id = cp.contest_id AND cps.problem_id = cp.problem_id
-			LEFT JOIN contest_user_problems cup ON cup.contest_id = cp.contest_id 
-				AND cup.problem_id = cp.problem_id 
-				AND cup.user_id = @userId
-			WHERE cp.contest_id = @contestId
-			ORDER BY cp.index
-		`
-
-		var uId sql.NullString
-		if userId != nil {
-			uId = sql.NullString{String: *userId, Valid: true}
-		} else {
-			uId = sql.NullString{Valid: false}
+		var contestProblems []models.ContestProblem
+		if err := h.db.Where("contest_id = ?", contestId).Order("\"index\" ASC").Find(&contestProblems).Error; err != nil {
+			log.Println("Error fetching contest problems:", err)
+			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems", nil)
+			return
 		}
 
-		err = h.db.Raw(problemsQuery, sql.Named("contestId", contestId), sql.Named("userId", uId)).Scan(&problems).Error
-		if err != nil {
-			log.Println("Error fetching contest problems:", err)
-			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems")
-			return
+		var problemResults []models.ContestProblemResult
+		if userId != nil {
+			if err := h.db.Where("contest_id = ? AND user_id = ?", contestId, *userId).Find(&problemResults).Error; err != nil {
+				log.Println("Error fetching problem results:", err)
+				utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem results", nil)
+				return
+			}
+		}
+
+		// Count total solvers per problem
+		type solverCount struct {
+			ProblemId  string
+			SolvedCount int
+		}
+		var solverCounts []solverCount
+		if err := h.db.Model(&models.ContestProblemResult{}).
+			Select("problem_id, COUNT(*) as solved_count").
+			Where("contest_id = ? AND is_solved = ?", contestId, true).
+			Group("problem_id").Scan(&solverCounts); err != nil {
+			log.Println("Error counting solvers:", err)
+		}
+
+		solverMap := make(map[string]int)
+		for _, sc := range solverCounts {
+			solverMap[sc.ProblemId] = sc.SolvedCount
+		}
+
+		// Build user result map
+		userResultMap := make(map[string]*models.ContestProblemResult)
+		for i := range problemResults {
+			userResultMap[problemResults[i].ProblemId] = &problemResults[i]
+		}
+
+		for _, cp := range contestProblems {
+			prob := Problem{
+				Id:    cp.ProblemID,
+				Index: cp.Index,
+			}
+
+			if ur, exists := userResultMap[cp.ProblemID]; exists {
+				prob.Solved = ur.IsSolved
+				prob.Attempted = ur.WrongAttempts > 0
+			}
+
+			if sc, exists := solverMap[cp.ProblemID]; exists {
+				prob.TotalSolvers = sc
+			}
+
+			problems = append(problems, prob)
 		}
 	}
 
@@ -125,7 +142,6 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		problems = []Problem{}
 	}
 
-	// Prepare response with both contest and problems information
 	response := struct {
 		Contest  Contest   `json:"contest"`
 		Problems []Problem `json:"problems"`
@@ -134,5 +150,5 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		Problems: problems,
 	}
 
-	utils.SendResponse(w, http.StatusOK, response)
+	utils.SendResponse(w, http.StatusOK, nil, response)
 }

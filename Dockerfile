@@ -32,5 +32,8 @@ COPY --from=builder /build/judgeserver .
 # Expose port
 EXPOSE 8000
 
+# Create an empty .env file if it doesn't exist
+RUN touch .env
+
 # Run the application
 CMD ["./judgeserver"]

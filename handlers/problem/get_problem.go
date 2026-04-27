@@ -169,7 +169,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 	if testcases == nil {
 		testcases = []Testcase{}
 	}
-	problem.Testcases = testcases
+	// problem.Testcases = testcases
 	problem.LastSubmission = lastSubmission
 
 	utils.SendResponse(w, http.StatusOK, nil, problem)

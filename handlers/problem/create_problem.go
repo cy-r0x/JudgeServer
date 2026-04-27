@@ -20,7 +20,7 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var reqProblem Problem
+	var reqProblem models.Problem
 	err := decoder.Decode(&reqProblem)
 	if err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload", nil)
@@ -61,10 +61,5 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqProblem.Id = newProblem.Id
-	reqProblem.CreatedAt = newProblem.CreatedAt
-	reqProblem.UpdatedAt = newProblem.UpdatedAt
-	reqProblem.Testcases = []Testcase{}
-
-	utils.SendResponse(w, http.StatusCreated, nil, reqProblem)
+	utils.SendResponse(w, http.StatusCreated, "Problem created successfully", nil)
 }

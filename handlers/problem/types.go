@@ -23,7 +23,6 @@ type Problem struct {
 	OutputStatement    string              `json:"output_statement" gorm:"column:output_statement"`
 	TimeLimit          float32             `json:"time_limit" gorm:"column:time_limit"`
 	MemoryLimit        float32             `json:"memory_limit" gorm:"column:memory_limit"`
-	Testcases          []Testcase          `json:"test_cases" gorm:"-"`
 	CheckerType        string              `json:"checker_type" gorm:"column:checker_type"`
 	CheckerStrictSpace bool                `json:"checker_strict_space" gorm:"column:checker_strict_space"`
 	CheckerPrecision   *string             `json:"checker_precision" gorm:"column:checker_precision"`

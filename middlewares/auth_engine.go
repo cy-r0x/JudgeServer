@@ -8,34 +8,30 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/judgenot0/judge-backend/utils"
 )
 
-type EngineData struct {
+type EnginePayload struct {
 	SubmissionId    int64    `json:"submission_id"`
-	Verdict         string   `json:"verdict"`
+	Status          string   `json:"verdict"`
 	ExecutionTime   *float32 `json:"execution_time"`
 	ExecutionMemory *float32 `json:"execution_memory"`
 	Timestamp       int64    `json:"timestamp"`
 }
 
-type EnginePayload struct {
-	Data        *EngineData `json:"payload"`
-	AccessToken string      `json:"access_token"`
-}
-
-func VerifyToken(enginePayload EnginePayload, secret string) bool {
-	if secret == "" || enginePayload.Data == nil {
+func VerifyToken(enginePayload *EnginePayload, accessToken string, secret string) bool {
+	if secret == "" || enginePayload == nil {
 		return false
 	}
 
-	if time.Since(time.Unix(enginePayload.Data.Timestamp, 0)) > 5*time.Minute {
+	if time.Since(time.Unix(enginePayload.Timestamp, 0)) > 5*time.Minute {
 		return false
 	}
 
-	message, err := json.Marshal(enginePayload.Data)
+	message, err := json.Marshal(enginePayload)
 	if err != nil {
 		return false
 	}
@@ -45,13 +41,28 @@ func VerifyToken(enginePayload EnginePayload, secret string) bool {
 	expectedMAC := mac.Sum(nil)
 	expectedHex := hex.EncodeToString(expectedMAC)
 
-	return hmac.Equal([]byte(expectedHex), []byte(enginePayload.AccessToken))
+	return hmac.Equal([]byte(expectedHex), []byte(accessToken))
 }
 
 func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		const maxBodySize = 10 * 1024
 		r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+		header := r.Header.Get("Authorization")
+		if header == "" {
+			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required", nil)
+			return
+		}
+
+		headerArr := strings.Split(header, " ")
+		if len(headerArr) != 2 {
+			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format", nil)
+			return
+		}
+
+		accessToken := headerArr[1]
 
 		decoder := json.NewDecoder(r.Body)
 		var enginePayload EnginePayload
@@ -62,13 +73,14 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 			utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON", nil)
 			return
 		}
-		ok := VerifyToken(enginePayload, m.config.EngineKey)
+
+		ok := VerifyToken(&enginePayload, accessToken, m.config.EngineKey)
 		if !ok {
 			utils.SendResponse(w, http.StatusBadRequest, "Invalid Token", nil)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "engineData", enginePayload.Data)
+		ctx := context.WithValue(r.Context(), "enginePayload", enginePayload)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

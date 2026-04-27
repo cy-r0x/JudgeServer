@@ -10,47 +10,84 @@ import (
 )
 
 func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
-	engineData, ok := r.Context().Value("engineData").(*middlewares.EngineData)
+	enginePayload, ok := r.Context().Value("enginePayload").(*middlewares.EnginePayload)
+
 	if !ok {
-		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token")
+		utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token", nil)
 		return
 	}
 
-	// Handle nullable execution time and memory values
-	var executionTime interface{}
-	var memoryUsed interface{}
-
-	if engineData.ExecutionTime != nil {
-		executionTime = *engineData.ExecutionTime
+	// -----------------------------
+	// Validate status (important)
+	// -----------------------------
+	validStatuses := map[string]bool{
+		"ACCEPTED":              true,
+		"WRONG_ANSWER":          true,
+		"TIME_LIMIT_EXCEEDED":   true,
+		"RUNTIME_ERROR":         true,
+		"MEMORY_LIMIT_EXCEEDED": true,
+		"COMPILATION_ERROR":     true,
 	}
 
-	if engineData.ExecutionMemory != nil {
-		memoryUsed = *engineData.ExecutionMemory
+	if !validStatuses[enginePayload.Status] {
+		utils.SendResponse(w, http.StatusBadRequest, "Invalid status from engine", nil)
+		return
 	}
 
+	// -----------------------------
+	// Build update map
+	// -----------------------------
 	updates := map[string]interface{}{
-		"verdict": engineData.Verdict,
-	}
-	if executionTime != nil {
-		updates["execution_time"] = executionTime
-	}
-	if memoryUsed != nil {
-		updates["memory_used"] = memoryUsed
+		"status": enginePayload.Status,
 	}
 
-	// Update the submission in the DB
-	if err := h.db.Model(&models.Submission{}).Where("id = ?", engineData.SubmissionId).Updates(updates).Error; err != nil {
-		log.Println("DB Update Error:", err)
-		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update submission")
+	if enginePayload.ExecutionTime != nil {
+		updates["exec_time"] = *enginePayload.ExecutionTime
+	}
+
+	if enginePayload.ExecutionMemory != nil {
+		updates["exec_memory"] = *enginePayload.ExecutionMemory
+	}
+
+	// -----------------------------
+	// Update submission
+	// -----------------------------
+	result := h.db.Model(&models.Submission{}).
+		Where("id = ?", enginePayload.SubmissionId).
+		Updates(updates)
+
+	if result.Error != nil {
+		log.Printf("DB Update Error (submission=%d): %v",
+			enginePayload.SubmissionId, result.Error)
+
+		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update submission", nil)
 		return
 	}
 
-	if engineData.Verdict == "ac" {
-		h.updateStandingsForAccepted(engineData.SubmissionId)
-	} else {
-		// Track non-AC submissions for contest standings
-		h.updateStandingsForNonAccepted(engineData.SubmissionId, engineData.Verdict)
+	if result.RowsAffected == 0 {
+		utils.SendResponse(w, http.StatusNotFound, "Submission not found", nil)
+		return
 	}
 
-	utils.SendResponse(w, http.StatusOK, map[string]interface{}{"message": "Submission updated"})
+	// @TODO: kaj baki ekhane ekhno!!!!!!!!!!!!!
+	// // -----------------------------
+	// // Standings update (sync call)
+	// // -----------------------------
+	// if enginePayload.Status == "ACCEPTED" {
+	// 	if err := h.updateStandingsForAccepted(enginePayload.SubmissionId); err != nil {
+	// 		log.Printf("Standings update (ACCEPTED) failed: %v", err)
+	// 	}
+	// } else {
+	// 	if err := h.updateStandingsForNonAccepted(
+	// 		enginePayload.SubmissionId,
+	// 		enginePayload.Status,
+	// 	); err != nil {
+	// 		log.Printf("Standings update failed: %v", err)
+	// 	}
+	// }
+
+	// -----------------------------
+	// Done
+	// -----------------------------
+	utils.SendResponse(w, http.StatusOK, "Submission updated", nil)
 }

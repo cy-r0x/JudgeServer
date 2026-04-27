@@ -18,8 +18,8 @@ type submissionInfo struct {
 	SubmittedAt time.Time `gorm:"column:submitted_at"`
 }
 
-func (h *Handler) updateStandingsForAccepted(submissionID int64) {
-	info, err := h.fetchSubmissionContext(submissionID)
+func (h *Handler) updateStandingsForAccepted(submissionId int64) {
+	info, err := h.fetchSubmissionContext(submissionId)
 	if err != nil {
 		log.Println("standings context error:", err)
 		return
@@ -81,7 +81,7 @@ func (h *Handler) updateStandingsForAccepted(submissionID int64) {
 
 	// Mark the submission as first blood if applicable
 	if isFirstBlood {
-		if err := tx.Exec(`UPDATE submissions SET first_blood = true WHERE id = ?`, submissionID).Error; err != nil {
+		if err := tx.Exec(`UPDATE submissions SET first_blood = true WHERE id = ?`, submissionId).Error; err != nil {
 			tx.Rollback()
 			log.Println("standings mark first blood error:", err)
 			return
@@ -210,8 +210,8 @@ func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissi
 	return elapsedMinutes + wrongCount*PenaltyPerWrongSubmission, nil
 }
 
-func (h *Handler) updateStandingsForNonAccepted(submissionID int64, verdict string) {
-	info, err := h.fetchSubmissionContext(submissionID)
+func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict string) {
+	info, err := h.fetchSubmissionContext(submissionId)
 	if err != nil {
 		log.Println("standings context error:", err)
 		return

@@ -5,8 +5,8 @@ import (
 	"log"
 )
 
-func (h *Handler) submitToQueue(problem *Problem) error {
-	jsonData, err := json.Marshal(problem)
+func (h *Handler) submitToQueue(payload *QueueSubmission) error {
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		log.Println("Error marshaling queueData:", err)
 		return err

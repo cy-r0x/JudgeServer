@@ -11,19 +11,6 @@ import (
 	"github.com/judgenot0/judge-backend/utils"
 )
 
-type Payload struct {
-	Sub            string  `json:"sub"`
-	FullName       string  `json:"full_name"`
-	Username       string  `json:"username"`
-	Clan           *string `json:"clan"`
-	Role           string  `json:"role"`
-	RoomNo         *string `json:"room_no"`
-	PcNo           *string `json:"pc_no"`
-	AllowedContest *string `json:"allowed_contest"`
-	AccessToken    string  `json:"accessToken"`
-	jwt.RegisteredClaims
-}
-
 func DecodeToken(tokenStr string, secretKey string) (*Payload, error) {
 	payload := &Payload{}
 	token, err := jwt.ParseWithClaims(tokenStr, payload, func(t *jwt.Token) (any, error) {
@@ -49,6 +36,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required", nil)
 			return
 		}
+
 		headerArr := strings.Split(header, " ")
 		if len(headerArr) != 2 {
 			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format", nil)

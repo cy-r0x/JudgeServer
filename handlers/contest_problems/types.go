@@ -5,11 +5,11 @@ import (
 )
 
 type ContestProblem struct {
-	ContestId     string `json:"contest_id" gorm:"column:contest_id"`
-	ProblemId     string `json:"problem_id" gorm:"column:problem_id"`
+	ContestId     string `json:"contestId" gorm:"column:contest_id"`
+	ProblemId     string `json:"problemId" gorm:"column:problem_id"`
 	Index         int    `json:"index" gorm:"column:index"`
-	ProblemName   string `json:"problem_name,omitempty" gorm:"column:problem_name"`
-	ProblemAuthor string `json:"problem_author,omitempty" gorm:"column:problem_author"`
+	ProblemName   string `json:"problemName,omitempty" gorm:"column:problem_name"`
+	ProblemAuthor string `json:"problemAuthor,omitempty" gorm:"column:problem_author"`
 }
 
 type Handler struct {

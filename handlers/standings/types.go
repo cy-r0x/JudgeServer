@@ -9,20 +9,20 @@ import (
 
 type ProblemStatus struct {
 	Solved        bool       `json:"solved"`
-	FirstSolvedAt *time.Time `json:"first_solved_at,omitempty"`
+	FirstSolvedAt *time.Time `json:"firstSolvedAt,omitempty"`
 	Attempts      int        `json:"attempts"`
 	Penalty       int        `json:"penalty"`
-	FirstBlood    bool       `json:"first_blood"`
+	FirstBlood    bool       `json:"firstBlood"`
 }
 
 type UserStanding struct {
-	UserId       string          `json:"user_id"`
+	UserId       string          `json:"userId"`
 	Username     string          `json:"username"`
 	Name         string          `json:"name"`
-	TotalPenalty int             `json:"total_penalty"`
-	SolvedCount  int             `json:"solved_count"`
+	TotalPenalty int             `json:"totalPenalty"`
+	SolvedCount  int             `json:"solvedCount"`
 	Problems     []ProblemStatus `json:"problems"`
-	LastSolvedAt *time.Time      `json:"last_solved_at,omitempty"`
+	LastSolvedAt *time.Time      `json:"lastSolvedAt,omitempty"`
 }
 
 type ProblemSolveStatus struct {
@@ -31,15 +31,15 @@ type ProblemSolveStatus struct {
 }
 
 type StandingsResponse struct {
-	ContestId          string                     `json:"contest_id"`
-	ContestTitle       string                     `json:"contest_title"`
-	ProblemMapping     map[int]string             `json:"problem_mapping"`
+	ContestId          string                     `json:"contestId"`
+	ContestTitle       string                     `json:"contestTitle"`
+	ProblemMapping     map[int]string             `json:"problemMapping"`
 	Standings          []UserStanding             `json:"standings"`
-	StartTime          time.Time                  `json:"start_time"`
-	DurationSeconds    int64                      `json:"duration_seconds"`
-	ProblemSolveStatus map[int]ProblemSolveStatus `json:"problem_solve_status"`
-	TotalItem          int                        `json:"total_item"`
-	TotalPages         int                        `json:"total_page"`
+	StartTime          time.Time                  `json:"startTime"`
+	DurationSeconds    int64                      `json:"durationSeconds"`
+	ProblemSolveStatus map[int]ProblemSolveStatus `json:"problemSolveStatus"`
+	TotalItem          int                        `json:"totalItem"`
+	TotalPages         int                        `json:"totalPages"`
 	Limit              int                        `json:"limit"`
 	Page               int                        `json:"page"`
 }

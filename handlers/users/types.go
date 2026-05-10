@@ -12,12 +12,12 @@ type UserCreds struct {
 }
 
 type UpdateUserPayload struct {
-	Name           *string `json:"name"`
+	Name           *string `json:"fullName"`
 	Password       *string `json:"password"`
-	AdditionalInfo *string `json:"additional_info"`
-	RoomNo         *string `json:"room_no"`
-	PcNo           *string `json:"pc_no"`
-	AllowedContest *string `json:"allowed_contest"`
+	AdditionalInfo *string `json:"additionalInfo"`
+	RoomNo         *string `json:"roomNo"`
+	PcNo           *string `json:"pcNo"`
+	AllowedContest *string `json:"allowedContest"`
 }
 
 type Payload struct {
@@ -34,9 +34,9 @@ type Payload struct {
 
 type UserResponse struct {
 	Id             string  `json:"id" db:"id"`
-	Name           string  `json:"full_name" db:"full_name"`
+	Name           string  `json:"fullName" db:"full_name"`
 	Username       string  `json:"username" db:"username"`
-	AdditionalInfo *string `json:"additional_info,omitempty" db:"additional_info"`
+	AdditionalInfo *string `json:"additionalInfo,omitempty" db:"additional_info"`
 }
 
 type Handler struct {

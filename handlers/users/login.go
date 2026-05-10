@@ -84,6 +84,19 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
+	// Build user response (without password)
+	userResponse := map[string]any{
+		"id":              dbUser.Id,
+		"fullName":        dbUser.Name,
+		"username":        dbUser.Username,
+		"role":            string(dbUser.Role),
+		"additionalInfo":  dbUser.AdditionalInfo,
+		"roomNo":          dbUser.RoomNo,
+		"pcNo":            dbUser.PcNo,
+		"allowedContest":  dbUser.AllowedContest,
+		"accessToken":     accessToken,
+	}
+
 	// success response
-	utils.SendResponse(w, http.StatusOK, "Login Sucessful", nil)
+	utils.SendResponse(w, http.StatusOK, "Login Successful", userResponse)
 }

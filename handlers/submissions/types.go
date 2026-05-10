@@ -20,15 +20,15 @@ type SubmissionResponse struct {
 }
 
 type UserSubmission struct {
-	ProblemId  string `json:"problem_id"`
-	ContestId  string `json:"contest_id"`
+	ProblemId  string `json:"problemId"`
+	ContestId  string `json:"contestId"`
 	Language   string `json:"language"`
-	SourceCode string `json:"source_code"`
+	SourceCode string `json:"sourceCode"`
 }
 
 type Testcase struct {
 	Input          string `json:"input"`
-	ExpectedOutput string `json:"expected_output"`
+	ExpectedOutput string `json:"expectedOutput"`
 }
 
 type QueueSubmission struct {

@@ -31,19 +31,29 @@ func DecodeToken(tokenStr string, secretKey string) (*Payload, error) {
 
 func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var accessToken string
+
+		// Try Authorization header first
 		header := r.Header.Get("Authorization")
-		if header == "" {
-			utils.SendResponse(w, http.StatusUnauthorized, "Authorization header required", nil)
-			return
+		if header != "" {
+			headerArr := strings.Split(header, " ")
+			if len(headerArr) == 2 {
+				accessToken = headerArr[1]
+			}
 		}
 
-		headerArr := strings.Split(header, " ")
-		if len(headerArr) != 2 {
-			utils.SendResponse(w, http.StatusUnauthorized, "Invalid token format", nil)
-			return
+		// Fallback to cookie
+		if accessToken == "" {
+			cookie, err := r.Cookie("access_token")
+			if err == nil && cookie.Value != "" {
+				accessToken = cookie.Value
+			}
 		}
 
-		accessToken := headerArr[1]
+		if accessToken == "" {
+			utils.SendResponse(w, http.StatusUnauthorized, "Authorization required", nil)
+			return
+		}
 
 		payload, err := DecodeToken(accessToken, m.config.SecretKey)
 

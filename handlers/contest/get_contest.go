@@ -80,7 +80,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 
 	if contest.Status != "UPCOMING" {
 		var contestProblems []models.ContestProblem
-		if err := h.db.Where("contest_id = ?", contestId).Order("\"index\" ASC").Find(&contestProblems).Error; err != nil {
+		if err := h.db.Where("contest_id = ?", contestId).Order("\"index\" ASC").Preload("Problem").Find(&contestProblems).Error; err != nil {
 			slog.Error("Error fetching contest problems", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems", nil)
 			return
@@ -122,6 +122,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		for _, cp := range contestProblems {
 			prob := Problem{
 				Id:    cp.ProblemID,
+				Title: cp.Problem.Title,
 				Index: cp.Index,
 			}
 

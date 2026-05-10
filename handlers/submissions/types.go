@@ -32,11 +32,16 @@ type Testcase struct {
 }
 
 type QueueSubmission struct {
-	SubmissionId int64
-	SourceCode   string
-	Testcases    []Testcase
-	Language     string
-	SubmittedAt  int64
+	SubmissionId       int64      `json:"submissionId"`
+	SourceCode         string     `json:"sourceCode"`
+	Testcases          []Testcase `json:"testcases"`
+	Language           string     `json:"language"`
+	TimeLimit          float32    `json:"timeLimit"`
+	MemoryLimit        float32    `json:"memoryLimit"`
+	CheckerType        string     `json:"checkerType"`
+	CheckerStrictSpace bool       `json:"checkerStrictSpace"`
+	CheckerPrecision   *string    `json:"checkerPrecision,omitempty"`
+	SubmittedAt        int64      `json:"submittedAt"`
 }
 
 type SubmissionListParams struct {

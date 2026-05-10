@@ -31,7 +31,7 @@ type Problem struct {
 	Author             string              `json:"author" gorm:"column:author"`
 	CreatedAt          time.Time           `json:"createdAt" gorm:"column:created_at"`
 	UpdatedAt          time.Time           `json:"updatedAt" gorm:"column:updated_at"`
-	LastSubmission     *LastSubmissionData `json:"last_submission,omitempty" gorm:"-"`
+	LastSubmission     *LastSubmissionData `json:"lastSubmission,omitempty" gorm:"-"`
 }
 
 type LastSubmissionData struct {

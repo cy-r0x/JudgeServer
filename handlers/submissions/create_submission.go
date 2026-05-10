@@ -170,6 +170,11 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	queueSubmission.SubmissionId = submissionID
 	queueSubmission.SourceCode = submission.SourceCode
 	queueSubmission.Language = submission.Language
+	queueSubmission.TimeLimit = float32(problem.TimeLimit)
+	queueSubmission.MemoryLimit = float32(problem.MemoryLimit)
+	queueSubmission.CheckerType = problem.CheckerType
+	queueSubmission.CheckerStrictSpace = problem.CheckerStrictSpace
+	queueSubmission.CheckerPrecision = problem.CheckerPrecision
 
 	if err := h.submitToQueue(&queueSubmission); err != nil {
 		// IMPORTANT: do NOT rollback (already committed)

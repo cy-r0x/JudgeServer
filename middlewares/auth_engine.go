@@ -15,11 +15,16 @@ import (
 )
 
 type EnginePayload struct {
-	SubmissionId    int64    `json:"submission_id"`
+	SubmissionId    int64    `json:"submissionId"`
 	Status          string   `json:"verdict"`
-	ExecutionTime   *float32 `json:"execution_time"`
-	ExecutionMemory *float32 `json:"execution_memory"`
+	ExecutionTime   *float32 `json:"executionTime"`
+	ExecutionMemory *float32 `json:"executionMemory"`
 	Timestamp       int64    `json:"timestamp"`
+}
+
+type engineRequest struct {
+	Data        *EnginePayload `json:"payload"`
+	AccessToken string         `json:"accessToken"`
 }
 
 func VerifyToken(enginePayload *EnginePayload, accessToken string, secret string) bool {
@@ -65,8 +70,8 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 		accessToken := headerArr[1]
 
 		decoder := json.NewDecoder(r.Body)
-		var enginePayload EnginePayload
-		err := decoder.Decode(&enginePayload)
+		var req engineRequest
+		err := decoder.Decode(&req)
 
 		if err != nil {
 			slog.Warn("engine payload decode failed", "error", err)
@@ -74,13 +79,18 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 			return
 		}
 
-		ok := VerifyToken(&enginePayload, accessToken, m.config.EngineKey)
+		if req.Data == nil {
+			utils.SendResponse(w, http.StatusBadRequest, "Invalid payload", nil)
+			return
+		}
+
+		ok := VerifyToken(req.Data, accessToken, m.config.EngineKey)
 		if !ok {
 			utils.SendResponse(w, http.StatusBadRequest, "Invalid Token", nil)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "enginePayload", enginePayload)
+		ctx := context.WithValue(r.Context(), "enginePayload", *req.Data)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

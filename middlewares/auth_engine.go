@@ -90,7 +90,7 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "enginePayload", *req.Data)
+		ctx := context.WithValue(r.Context(), "enginePayload", req.Data)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

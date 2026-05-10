@@ -2,7 +2,7 @@ package problem
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -13,7 +13,7 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var testcase Testcase
 	if err := decoder.Decode(&testcase); err != nil {
-		log.Println("Error decoding request body:", err)
+		slog.Error("Error decoding request body", "error", err)
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request body", nil)
 		return
 	}
@@ -32,7 +32,7 @@ func (h *Handler) AddTestCase(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.Create(&newTestcase).Error
 	if err != nil {
-		log.Println("Error creating testcase:", err)
+		slog.Error("Error creating testcase", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create testcase", nil)
 		return
 	}

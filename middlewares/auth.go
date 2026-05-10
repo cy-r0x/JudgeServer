@@ -3,7 +3,7 @@ package middlewares
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -48,7 +48,7 @@ func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 		payload, err := DecodeToken(accessToken, m.config.SecretKey)
 
 		if err != nil {
-			log.Println(err)
+			slog.Warn("token decode failed", "error", err)
 			utils.SendResponse(w, http.StatusUnauthorized, "Invalid Token", nil)
 			return
 		}

@@ -2,7 +2,7 @@ package problem
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -56,7 +56,7 @@ func (h *Handler) CreateProblem(w http.ResponseWriter, r *http.Request) {
 
 	err = h.db.Create(&newProblem).Error
 	if err != nil {
-		log.Println("Error creating problem:", err)
+		slog.Error("Error creating problem", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create problem", nil)
 		return
 	}

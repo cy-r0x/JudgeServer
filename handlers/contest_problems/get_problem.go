@@ -1,7 +1,7 @@
 package contest_problems
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -18,7 +18,7 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	// Check if contest exists
 	var countContest int64
 	if err := h.db.Model(&models.Contest{}).Where("id = ?", contestId).Count(&countContest).Error; err != nil {
-		log.Println("Failed to check contest existence:", err)
+		slog.Error("Failed to check contest existence", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems", nil)
 		return
 	}
@@ -44,7 +44,7 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 	`
 
 	if err := h.db.Raw(query, contestId).Scan(&contestProblems).Error; err != nil {
-		log.Println("Failed to get contest problems:", err)
+		slog.Error("Failed to get contest problems", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to get contest problems", nil)
 		return
 	}

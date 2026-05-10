@@ -1,7 +1,7 @@
 package db
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/judgenot0/judge-backend/config"
 	"github.com/judgenot0/judge-backend/models"
@@ -14,7 +14,7 @@ func NewConnection(cfg *config.Config) (*gorm.DB, error) {
 
 	dbCon, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
-		log.Println("Database connection error:", err)
+		slog.Error("Database connection error", "error", err)
 		return nil, err
 	}
 	return dbCon, nil
@@ -22,7 +22,7 @@ func NewConnection(cfg *config.Config) (*gorm.DB, error) {
 
 func Migrate(dbConn *gorm.DB) error {
 	if err := dbConn.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto").Error; err != nil {
-		log.Println("Failed to enable pgcrypto extension:", err)
+		slog.Error("Failed to enable pgcrypto extension", "error", err)
 		return err
 	}
 
@@ -37,14 +37,14 @@ func Migrate(dbConn *gorm.DB) error {
 		&models.ContestProblemResult{},
 	)
 	if err != nil {
-		log.Println("Failed to AutoMigrate:", err)
+		slog.Error("Failed to AutoMigrate", "error", err)
 		return err
 	}
 
 	// Create default admin user if it doesn't exist
 	var adminCount int64
 	if err := dbConn.Model(&models.User{}).Where("username = ?", "admin").Count(&adminCount).Error; err != nil {
-		log.Println("Failed to check if admin user exists:", err)
+		slog.Error("Failed to check if admin user exists", "error", err)
 		return err
 	}
 
@@ -56,12 +56,12 @@ func Migrate(dbConn *gorm.DB) error {
 			Role:     models.RoleAdmin,
 		}
 		if err := dbConn.Create(&adminUser).Error; err != nil {
-			log.Println("Failed to create default admin user:", err)
+			slog.Error("Failed to create default admin user", "error", err)
 			return err
 		}
-		log.Println("Default admin user created successfully")
+		slog.Info("Default admin user created successfully")
 	}
 
-	log.Println("GORM AutoMigration Done")
+	slog.Info("GORM AutoMigration Done")
 	return nil
 }

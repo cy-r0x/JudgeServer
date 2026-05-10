@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -24,6 +24,11 @@ import (
 )
 
 func Serve() {
+	// Initialize structured logging
+	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	slog.SetDefault(logger)
+
 	config, err := config.GetConfig()
 	if err != nil {
 		os.Exit(1)
@@ -37,7 +42,7 @@ func Serve() {
 	queueClient := queue.NewQueue()
 	err = queueClient.InitQueue(config)
 	if err != nil {
-		log.Println("Failed to initialize queue:", err)
+		slog.Error("Failed to initialize queue", "error", err)
 		os.Exit(1)
 	}
 	defer queueClient.Close()
@@ -88,9 +93,9 @@ func Serve() {
 
 	//This will wrap the mux with global middlewares
 	wrapedMux := manager.WrapMux(mux)
-	log.Printf("Server Running at http://localhost:%s\n", config.HttpPort)
+	slog.Info("Server running", "address", "http://localhost:"+config.HttpPort)
 	if err := http.ListenAndServe("0.0.0.0:"+config.HttpPort, wrapedMux); err != nil {
-		log.Println("HTTP server error:", err)
+		slog.Error("HTTP server error", "error", err)
 		os.Exit(1)
 	}
 }

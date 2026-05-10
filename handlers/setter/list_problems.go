@@ -1,7 +1,7 @@
 package setter
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -25,7 +25,7 @@ func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 		Scan(&problems).Error
 
 	if err != nil {
-		log.Println("Error fetching setter problems:", err)
+		slog.Error("Error fetching setter problems", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problems", nil)
 		return
 	}

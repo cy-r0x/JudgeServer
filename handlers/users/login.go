@@ -2,7 +2,7 @@ package users
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -68,7 +68,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	accessToken, err := token.SignedString([]byte(secret))
 
 	if err != nil {
-		log.Println("error signing jwt:", err)
+		slog.Error("error signing jwt", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Login failed", nil)
 		return
 	}

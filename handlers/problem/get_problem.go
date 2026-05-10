@@ -1,7 +1,7 @@
 package problem
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -37,7 +37,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		var count int64
 		err := h.db.Model(&models.ContestProblem{}).Where("problem_id = ? AND contest_id = ?", problemId, *payload.AllowedContest).Count(&count).Error
 		if err != nil {
-			log.Println("Error checking problem access:", err)
+			slog.Error("Error checking problem access", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem access", nil)
 			return
 		}
@@ -51,7 +51,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		var author string
 		err := h.db.Model(&models.Problem{}).Select("author").Where("id = ?", problemId).Scan(&author).Error
 		if err != nil {
-			log.Println("Error checking problem author:", err)
+			slog.Error("Error checking problem author", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem author", nil)
 			return
 		}
@@ -82,7 +82,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 			WHERE p.id = ?`, problemId).Scan(&result).Error
 
 		if err != nil || result.Id == "" {
-			log.Println("Error fetching problem:", err)
+			slog.Error("Error fetching problem", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem", nil)
 			return
 		}
@@ -109,7 +109,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		var dbProblem models.Problem
 		err := h.db.Where("id = ?", problemId).First(&dbProblem).Error
 		if err != nil {
-			log.Println("Error fetching problem:", err)
+			slog.Error("Error fetching problem", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem", nil)
 			return
 		}
@@ -140,7 +140,7 @@ func (h *Handler) GetProblem(w http.ResponseWriter, r *http.Request) {
 		defer wg.Done()
 		tc, tcErr := h.fetchTestcases(problemId, isSampleOnly)
 		if tcErr != nil {
-			log.Println("Error fetching testcases:", tcErr)
+			slog.Error("Error fetching testcases", "error", tcErr)
 		} else {
 			testcases = tc
 		}

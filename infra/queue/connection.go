@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -11,13 +11,13 @@ func (q *Queue) connect() error {
 	var err error
 	conn, err := amqp.Dial(q.rabbitmqURL)
 	if err != nil {
-		log.Printf("Failed to connect to RabbitMQ: %v", err)
+		slog.Error("Failed to connect to RabbitMQ", "error", err)
 		return err
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Printf("Failed to open channel: %v", err)
+		slog.Error("Failed to open channel", "error", err)
 		conn.Close()
 		return err
 	}
@@ -25,7 +25,7 @@ func (q *Queue) connect() error {
 	dlxName := q.queueName + "_dlx"
 	err = ch.ExchangeDeclare(dlxName, "direct", true, false, false, false, nil)
 	if err != nil {
-		log.Printf("Failed to declare DLX: %v", err)
+		slog.Error("Failed to declare DLX", "error", err)
 		ch.Close()
 		conn.Close()
 		return err
@@ -34,7 +34,7 @@ func (q *Queue) connect() error {
 	dlqName := q.queueName + "_dlq"
 	_, err = ch.QueueDeclare(dlqName, true, false, false, false, amqp.Table{"x-queue-type": "quorum"})
 	if err != nil {
-		log.Printf("Failed to declare DLQ: %v", err)
+		slog.Error("Failed to declare DLQ", "error", err)
 		ch.Close()
 		conn.Close()
 		return err
@@ -42,7 +42,7 @@ func (q *Queue) connect() error {
 
 	err = ch.QueueBind(dlqName, q.queueName, dlxName, false, nil)
 	if err != nil {
-		log.Printf("Failed to bind DLQ to DLX: %v", err)
+		slog.Error("Failed to bind DLQ to DLX", "error", err)
 		ch.Close()
 		conn.Close()
 		return err
@@ -55,7 +55,7 @@ func (q *Queue) connect() error {
 	}
 	_, err = ch.QueueDeclare(q.queueName, true, false, false, false, args)
 	if err != nil {
-		log.Printf("Failed to declare queue: %v", err)
+		slog.Error("Failed to declare queue", "error", err)
 		ch.Close()
 		conn.Close()
 		return err
@@ -76,7 +76,7 @@ func (q *Queue) connect() error {
 }
 
 func (q *Queue) reconnect() error {
-	log.Println("Attempting to reconnect to RabbitMQ...")
+	slog.Info("Attempting to reconnect to RabbitMQ")
 
 	if q.ch != nil {
 		q.ch.Close()
@@ -99,11 +99,11 @@ func (q *Queue) reconnect() error {
 
 		err := q.connect()
 		if err == nil {
-			log.Println("Successfully reconnected to RabbitMQ")
+			slog.Info("Successfully reconnected to RabbitMQ")
 			return nil
 		}
 
-		log.Printf("Reconnection failed, retrying in %v: %v", backoff, err)
+		slog.Error("Reconnection failed", "backoff", backoff, "error", err)
 
 		if q.ctx != nil {
 			timer := time.NewTimer(backoff)

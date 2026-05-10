@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"log"
+	"log/slog"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -27,7 +27,7 @@ func (q *Queue) QueueMessage(submission []byte) error {
 	)
 
 	if err != nil {
-		log.Printf("Failed to publish message, attempting reconnect: %v", err)
+		slog.Error("Failed to publish message, attempting reconnect", "error", err)
 		if reconnectErr := q.reconnect(); reconnectErr != nil {
 			return reconnectErr
 		}

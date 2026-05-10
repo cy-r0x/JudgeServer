@@ -3,7 +3,7 @@ package usercsv
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -115,7 +115,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 		hasErrors := false
 		for result := range results {
 			if result.err != nil {
-				log.Println("Error processing user CSV async:", result.err)
+				slog.Error("Error processing user CSV async", "error", result.err)
 				hasErrors = true
 				continue
 			}
@@ -123,13 +123,13 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if hasErrors {
-			log.Println("Failed to process some users from CSV. Check logs for details.")
+			slog.Warn("Failed to process some users from CSV. Check logs for details.")
 			return
 		}
 
 		trx := h.db.Begin()
 		if trx.Error != nil {
-			log.Println("error starting transaction:", trx.Error)
+			slog.Error("error starting transaction", "error", trx.Error)
 			return
 		}
 
@@ -165,7 +165,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err := trx.Create(&newUser).Error; err != nil {
-				log.Println("error registering user:", err)
+				slog.Error("error registering user", "error", err)
 				trx.Rollback()
 				return
 			}
@@ -177,7 +177,7 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 					PlainPassword: user.UnHashedPassword, // Save the UNHASHED plain password here
 				}
 				if err := trx.Create(&creds).Error; err != nil {
-					log.Println("Failed to save user credentials:", err)
+					slog.Error("Failed to save user credentials", "error", err)
 					trx.Rollback()
 					return
 				}
@@ -185,10 +185,10 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := trx.Commit().Error; err != nil {
-			log.Println("error committing transaction:", err)
+			slog.Error("error committing transaction", "error", err)
 			return
 		}
 
-		log.Println("Async CSV User processing successful")
+		slog.Info("Async CSV User processing successful")
 	}()
 }

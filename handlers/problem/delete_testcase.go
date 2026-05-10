@@ -1,7 +1,7 @@
 package problem
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -11,14 +11,14 @@ import (
 func (h *Handler) DeleteTestcase(w http.ResponseWriter, r *http.Request) {
 	testcaseId := r.PathValue("testcaseId")
 	if testcaseId == "" {
-		log.Println("missing testcase ID")
+		slog.Warn("missing testcase ID")
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid testcase ID", nil)
 		return
 	}
 
 	result := h.db.Delete(&models.Testcase{}, "id = ?", testcaseId)
 	if result.Error != nil {
-		log.Println("Error deleting testcase:", result.Error)
+		slog.Error("Error deleting testcase", "error", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete testcase", nil)
 		return
 	}

@@ -2,7 +2,7 @@ package users
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -31,7 +31,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if payload.Password != nil && *payload.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*payload.Password), bcrypt.DefaultCost)
 		if err != nil {
-			log.Println(err)
+			slog.Error("failed to hash password", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to hash password", nil)
 			return
 		}
@@ -57,7 +57,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	result := h.db.Model(&models.User{}).Where("id = ?", userId).Updates(updates)
 	if result.Error != nil {
-		log.Println(result.Error)
+		slog.Error("failed to update user", "error", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update user", nil)
 		return
 	}

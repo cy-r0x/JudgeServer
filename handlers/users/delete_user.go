@@ -1,7 +1,7 @@
 package users
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -17,7 +17,7 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	result := h.db.Delete(&models.User{}, "id = ?", userId)
 	if result.Error != nil {
-		log.Println(result.Error)
+		slog.Error("failed to delete user", "error", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete user", nil)
 		return
 	}

@@ -2,19 +2,19 @@ package submissions
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 )
 
 func (h *Handler) submitToQueue(payload *QueueSubmission) error {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		log.Println("Error marshaling queueData:", err)
+		slog.Error("Error marshaling queueData", "error", err)
 		return err
 	}
 
 	err = h.queueClient.QueueMessage(jsonData)
 	if err != nil {
-		log.Println("Error passing submission to queue:", err)
+		slog.Error("Error passing submission to queue", "error", err)
 		return err
 	}
 

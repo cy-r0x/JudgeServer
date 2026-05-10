@@ -1,7 +1,7 @@
 package submissions
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
@@ -21,7 +21,7 @@ type submissionInfo struct {
 func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	info, err := h.fetchSubmissionContext(submissionId)
 	if err != nil {
-		log.Println("standings context error:", err)
+		slog.Error("standings context error", "error", err)
 		return
 	}
 	if info == nil || info.ContestID == nil {
@@ -32,7 +32,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		log.Println("standings tx begin error:", tx.Error)
+		slog.Error("standings tx begin error", "error", tx.Error)
 		return
 	}
 	defer func() {
@@ -46,12 +46,12 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	err = tx.Raw(`SELECT EXISTS (SELECT 1 FROM contest_solves WHERE contest_id=? AND user_id=? AND problem_id=?)`, contestID, info.UserID, info.ProblemID).Scan(&alreadySolved).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings check exists error:", err)
+		slog.Error("standings check exists error", "error", err)
 		return
 	}
 	if alreadySolved {
 		if err := tx.Commit().Error; err != nil {
-			log.Println("standings commit error:", err)
+			slog.Error("standings commit error", "error", err)
 		}
 		return
 	}
@@ -61,7 +61,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	err = tx.Raw(`SELECT index FROM contest_problems WHERE contest_id=? AND problem_id=?`, contestID, info.ProblemID).Scan(&problemIndex).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings get problem index error:", err)
+		slog.Error("standings get problem index error", "error", err)
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	)`, contestID, info.ProblemID, info.SubmittedAt).Scan(&isFirstBlood).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings check first blood error:", err)
+		slog.Error("standings check first blood error", "error", err)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	if isFirstBlood {
 		if err := tx.Exec(`UPDATE submissions SET first_blood = true WHERE id = ?`, submissionId).Error; err != nil {
 			tx.Rollback()
-			log.Println("standings mark first blood error:", err)
+			slog.Error("standings mark first blood error", "error", err)
 			return
 		}
 	}
@@ -91,7 +91,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	penalty, err := h.calculatePenalty(tx, contestID, info)
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings penalty error:", err)
+		slog.Error("standings penalty error", "error", err)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 		contestID, info.UserID, info.ProblemID, info.SubmittedAt).Scan(&attemptCount).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings count attempts error:", err)
+		slog.Error("standings count attempts error", "error", err)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	err = tx.Exec(`INSERT INTO contest_solves (contest_id, user_id, problem_id, solved_at, penalty, attempt_count, first_blood) VALUES (?, ?, ?, ?, ?, ?, ?)`, contestID, info.UserID, info.ProblemID, info.SubmittedAt, penalty, attemptCount, isFirstBlood).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings insert solve error:", err)
+		slog.Error("standings insert solve error", "error", err)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	`, contestID, info.UserID, info.ProblemID, problemIndex, info.SubmittedAt, penalty, attemptCount, isFirstBlood).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings upsert user_problem error:", err)
+		slog.Error("standings upsert user_problem error", "error", err)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	`, contestID, info.UserID, penalty, info.SubmittedAt).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings upsert error:", err)
+		slog.Error("standings upsert error", "error", err)
 		return
 	}
 
@@ -157,12 +157,12 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	`, contestID, info.ProblemID, problemIndex).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings update problem stats error:", err)
+		slog.Error("standings update problem stats error", "error", err)
 		return
 	}
 
 	if err = tx.Commit().Error; err != nil {
-		log.Println("standings commit error:", err)
+		slog.Error("standings commit error", "error", err)
 	}
 }
 
@@ -213,7 +213,7 @@ func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissi
 func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict string) {
 	info, err := h.fetchSubmissionContext(submissionId)
 	if err != nil {
-		log.Println("standings context error:", err)
+		slog.Error("standings context error", "error", err)
 		return
 	}
 	if info == nil || info.ContestID == nil {
@@ -224,7 +224,7 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		log.Println("standings tx begin error:", tx.Error)
+		slog.Error("standings tx begin error", "error", tx.Error)
 		return
 	}
 	defer func() {
@@ -238,12 +238,12 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 	err = tx.Raw(`SELECT EXISTS (SELECT 1 FROM contest_solves WHERE contest_id=? AND user_id=? AND problem_id=?)`, contestID, info.UserID, info.ProblemID).Scan(&alreadySolved).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings check exists error:", err)
+		slog.Error("standings check exists error", "error", err)
 		return
 	}
 	if alreadySolved {
 		if err := tx.Commit().Error; err != nil {
-			log.Println("standings commit error:", err)
+			slog.Error("standings commit error", "error", err)
 		}
 		return
 	}
@@ -253,7 +253,7 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 	err = tx.Raw(`SELECT index FROM contest_problems WHERE contest_id=? AND problem_id=?`, contestID, info.ProblemID).Scan(&problemIndex).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings get problem index error:", err)
+		slog.Error("standings get problem index error", "error", err)
 		return
 	}
 
@@ -266,7 +266,7 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 	`, contestID, info.UserID, info.ProblemID, problemIndex).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings upsert user_problem error:", err)
+		slog.Error("standings upsert user_problem error", "error", err)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 	`, contestID, info.UserID).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings update wrong_attempts error:", err)
+		slog.Error("standings update wrong_attempts error", "error", err)
 		return
 	}
 
@@ -296,11 +296,11 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 	`, contestID, info.ProblemID, problemIndex, contestID, info.ProblemID).Error
 	if err != nil {
 		tx.Rollback()
-		log.Println("standings update problem stats error:", err)
+		slog.Error("standings update problem stats error", "error", err)
 		return
 	}
 
 	if err = tx.Commit().Error; err != nil {
-		log.Println("standings commit error:", err)
+		slog.Error("standings commit error", "error", err)
 	}
 }

@@ -1,7 +1,7 @@
 package submissions
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -48,7 +48,7 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 		Scan(&submission).Error
 
 	if err != nil {
-		log.Println("DB Query Error:", err)
+		slog.Error("DB Query Error", "error", err)
 		utils.SendResponse(w, http.StatusNotFound, "Submission not found", nil)
 		return
 	}

@@ -2,7 +2,7 @@ package queue
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -17,7 +17,7 @@ func (q *Queue) StartDLQProcessor(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Stopping DLQ processor")
+			slog.Info("Stopping DLQ processor")
 			return
 		case <-ticker.C:
 			ch, _ := q.getChannel()
@@ -28,7 +28,7 @@ func (q *Queue) StartDLQProcessor(ctx context.Context) {
 			for {
 				msg, ok, err := ch.Get(dlqName, false)
 				if err != nil {
-					log.Printf("Error fetching from DLQ: %v", err)
+					slog.Error("Error fetching from DLQ", "error", err)
 					break
 				}
 				if !ok {
@@ -47,7 +47,7 @@ func (q *Queue) StartDLQProcessor(ctx context.Context) {
 					if len(msg.Body) < bodyLimit {
 						bodyLimit = len(msg.Body)
 					}
-					log.Printf("Message exceeded max retries (5). Dropping permanently. Body snippet: %s", string(msg.Body[:bodyLimit]))
+					slog.Warn("Message exceeded max retries, dropping permanently", "retry_count", retryCount, "body_snippet", string(msg.Body[:bodyLimit]))
 					msg.Ack(false)
 					continue
 				}
@@ -72,11 +72,11 @@ func (q *Queue) StartDLQProcessor(ctx context.Context) {
 				)
 
 				if err != nil {
-					log.Printf("Error requeuing message from DLQ: %v", err)
+					slog.Error("Error requeuing message from DLQ", "error", err)
 					msg.Nack(false, true)
 					break
 				} else {
-					log.Printf("Successfully requeued a message from DLQ")
+					slog.Info("Successfully requeued a message from DLQ")
 					msg.Ack(false)
 				}
 			}

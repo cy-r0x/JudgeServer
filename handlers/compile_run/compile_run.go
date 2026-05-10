@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -26,7 +26,7 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var submission UserSubmission
 	if err := decoder.Decode(&submission); err != nil {
-		log.Printf("Error decoding request body: %v", err)
+		slog.Error("Error decoding request body", "error", err)
 		utils.SendResponse(w, http.StatusBadRequest, " Invalid request payload", nil)
 		return
 	}
@@ -38,14 +38,14 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 		Scan(&problem).Error
 
 	if err != nil {
-		log.Printf("Error fetching problem details: %v", err)
+		slog.Error("Error fetching problem details", "error", err)
 		utils.SendResponse(w, http.StatusBadRequest, "Problem not found", nil)
 		return
 	}
 
 	testcases, err := h.fetchTestcases(submission.ProblemId, isSampleOnly)
 	if err != nil {
-		log.Printf("Error fetching testcases for problem ID %s: %v", submission.ProblemId, err)
+		slog.Error("Error fetching testcases", "problem_id", submission.ProblemId, "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch testcases for this problem", nil)
 		return
 	}
@@ -58,7 +58,7 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 
 	runReq, err := json.Marshal(&problem)
 	if err != nil {
-		log.Printf("Error marshaling problem data: %v", err)
+		slog.Error("Error marshaling problem data", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to prepare execution request", nil)
 		return
 	}
@@ -67,11 +67,11 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
-			log.Printf("Payload too large: exceeded %d bytes", maxBodySize)
+			slog.Warn("Payload too large", "max_body_size", maxBodySize)
 			utils.SendResponse(w, http.StatusRequestEntityTooLarge, "Request payload too large", nil)
 			return
 		} else {
-			log.Printf("Error sending request to execution engine: %v", err)
+			slog.Error("Error sending request to execution engine", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to execute code", nil)
 			return
 		}
@@ -84,7 +84,7 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 		Result string `json:"result"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Printf("Error decoding engine response: %v", err)
+		slog.Error("Error decoding engine response", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to parse execution result", nil)
 		return
 	}

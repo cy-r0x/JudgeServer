@@ -1,7 +1,7 @@
 package standings
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -45,7 +45,7 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	if fetchErr != nil {
-		log.Println(fetchErr)
+		slog.Error("Failed to fetch standings data", "error", fetchErr)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data", nil)
 		return
 	}

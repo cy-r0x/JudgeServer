@@ -1,7 +1,7 @@
 package submissions
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/utils"
@@ -21,7 +21,7 @@ func (h *Handler) ListAllSubmissions(w http.ResponseWriter, r *http.Request) {
 	// --- Fetch & Respond ---
 	submissions, totalCount, err := h.fetchSubmissions(params)
 	if err != nil {
-		log.Println("DB error:", err)
+		slog.Error("DB error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch submissions", nil)
 		return
 	}

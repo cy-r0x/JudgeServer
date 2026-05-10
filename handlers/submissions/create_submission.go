@@ -3,7 +3,7 @@ package submissions
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -52,7 +52,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 			utils.SendResponse(w, http.StatusBadRequest, "Contest does not exist", nil)
 			return
 		}
-		log.Println("Contest query error:", err)
+		slog.Error("Contest query error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission", nil)
 		return
 	}
@@ -90,7 +90,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		Scan(&problem).Error
 
 	if err != nil {
-		log.Println("Problem query error:", err)
+		slog.Error("Problem query error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission", nil)
 		return
 	}
@@ -113,7 +113,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 		Scan(&testcases).Error
 
 	if err != nil {
-		log.Println("Testcase query error:", err)
+		slog.Error("Testcase query error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to validate submission", nil)
 		return
 	}
@@ -153,13 +153,13 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		tx.Rollback()
-		log.Println("Insert error:", err)
+		slog.Error("Insert error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to create submission", nil)
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		log.Println("Commit error:", err)
+		slog.Error("Commit error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to commit transaction", nil)
 		return
 	}
@@ -173,7 +173,7 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.submitToQueue(&queueSubmission); err != nil {
 		// IMPORTANT: do NOT rollback (already committed)
-		log.Println("Queue error:", err)
+		slog.Error("Queue error", "error", err)
 
 		// Optional: mark submission as failed in DB
 		utils.SendResponse(w, http.StatusInternalServerError, "Submission stored but failed to queue", nil)

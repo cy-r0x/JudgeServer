@@ -1,7 +1,7 @@
 package problem
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/judgenot0/judge-backend/models"
 )
@@ -16,7 +16,7 @@ func (h *Handler) fetchTestcases(problemId string, isSample bool) ([]Testcase, e
 
 	err := query.Order("is_sample DESC, id ASC").Find(&dbTestcases).Error
 	if err != nil {
-		log.Println(err)
+		slog.Error("failed to fetch testcases", "error", err)
 		return nil, err
 	}
 

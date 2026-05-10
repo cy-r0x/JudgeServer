@@ -2,7 +2,7 @@ package problem
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -46,7 +46,7 @@ func (h *Handler) UpdateTestcase(w http.ResponseWriter, r *http.Request) {
 
 	result := h.db.Model(&models.Testcase{}).Where("id = ?", testcaseId).Updates(updates)
 	if result.Error != nil {
-		log.Println("Error updating testcase:", result.Error)
+		slog.Error("Error updating testcase", "error", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update testcase", nil)
 		return
 	}
@@ -58,7 +58,7 @@ func (h *Handler) UpdateTestcase(w http.ResponseWriter, r *http.Request) {
 
 	var updated models.Testcase
 	if err := h.db.Where("id = ?", testcaseId).First(&updated).Error; err != nil {
-		log.Println("Error fetching updated testcase:", err)
+		slog.Error("Error fetching updated testcase", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch updated testcase", nil)
 		return
 	}

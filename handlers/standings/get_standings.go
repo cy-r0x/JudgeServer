@@ -1,7 +1,7 @@
 package standings
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"sync"
@@ -20,7 +20,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 
 	crrPage, err := strconv.Atoi(page)
 	if err != nil {
-		log.Println(err)
+		slog.Error("invalid page number", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error", nil)
 		return
 	}
@@ -93,7 +93,7 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	if fetchErr != nil {
-		log.Println(fetchErr)
+		slog.Error("Failed to fetch standings data", "error", fetchErr)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch standings data", nil)
 		return
 	}

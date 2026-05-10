@@ -2,7 +2,7 @@ package contest_problems
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -24,7 +24,7 @@ func (h *Handler) DeleteContestProblem(w http.ResponseWriter, r *http.Request) {
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		log.Println("Failed to begin transaction:", tx.Error)
+		slog.Error("Failed to begin transaction", "error", tx.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete contest problem", nil)
 		return
 	}
@@ -37,7 +37,7 @@ func (h *Handler) DeleteContestProblem(w http.ResponseWriter, r *http.Request) {
 	result := tx.Where("contest_id = ? AND problem_id = ?", contestProblem.ContestId, contestProblem.ProblemId).Delete(&models.ContestProblem{})
 	if result.Error != nil {
 		tx.Rollback()
-		log.Println("Failed to delete contest problem:", result.Error)
+		slog.Error("Failed to delete contest problem", "error", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete contest problem", nil)
 		return
 	}
@@ -51,7 +51,7 @@ func (h *Handler) DeleteContestProblem(w http.ResponseWriter, r *http.Request) {
 	var remaining []models.ContestProblem
 	if err = tx.Where("contest_id = ?", contestProblem.ContestId).Order("index ASC").Find(&remaining).Error; err != nil {
 		tx.Rollback()
-		log.Println("Failed to fetch remaining contest problems:", err)
+		slog.Error("Failed to fetch remaining contest problems", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete contest problem", nil)
 		return
 	}
@@ -63,7 +63,7 @@ func (h *Handler) DeleteContestProblem(w http.ResponseWriter, r *http.Request) {
 		}
 		if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ? AND problem_id = ?", cp.ContestID, cp.ProblemID).Update("index", newIndex).Error; err != nil {
 			tx.Rollback()
-			log.Println("Failed to update contest problem index:", err)
+			slog.Error("Failed to update contest problem index", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete contest problem", nil)
 			return
 		}
@@ -71,7 +71,7 @@ func (h *Handler) DeleteContestProblem(w http.ResponseWriter, r *http.Request) {
 
 	if err = tx.Commit().Error; err != nil {
 		tx.Rollback()
-		log.Println("Failed to commit contest problem deletion:", err)
+		slog.Error("Failed to commit contest problem deletion", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to delete contest problem", nil)
 		return
 	}

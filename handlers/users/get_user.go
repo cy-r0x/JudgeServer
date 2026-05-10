@@ -1,7 +1,7 @@
 package users
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -18,7 +18,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	result := h.db.Select("id", "name", "username", "role", "additional_info", "room_no", "pc_no", "allowed_contest", "created_at").Where("id = ?", userId).First(&user)
 	if result.Error != nil {
-		log.Println(result.Error)
+		slog.Error("failed to fetch user", "error", result.Error)
 		utils.SendResponse(w, http.StatusNotFound, "User not found", nil)
 		return
 	}

@@ -2,7 +2,7 @@ package problem
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -26,7 +26,7 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 	var author string
 	err := h.db.Model(&models.Problem{}).Select("author").Where("id = ?", reqProblem.Id).Scan(&author).Error
 	if err != nil {
-		log.Println("Error checking problem author:", err)
+		slog.Error("Error checking problem author", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to verify problem author", nil)
 		return
 	}
@@ -50,7 +50,7 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 
 	result := h.db.Model(&models.Problem{}).Where("id = ?", reqProblem.Id).Updates(updateData)
 	if result.Error != nil {
-		log.Println("Error updating problem:", result.Error)
+		slog.Error("Error updating problem", "error", result.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update problem", nil)
 		return
 	}

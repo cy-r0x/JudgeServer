@@ -2,7 +2,7 @@ package users
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -27,7 +27,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	// hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(reqUser.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Println(err)
+		slog.Error("failed to hash password", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error", nil)
 		return
 	}
@@ -75,7 +75,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Println("DB Transaction Error:", err)
+		slog.Error("DB Transaction Error", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Internal Server Error", nil)
 		return
 	}

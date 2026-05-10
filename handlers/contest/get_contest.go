@@ -1,7 +1,7 @@
 package contest
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -81,7 +81,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	if contest.Status != "UPCOMING" {
 		var contestProblems []models.ContestProblem
 		if err := h.db.Where("contest_id = ?", contestId).Order("\"index\" ASC").Find(&contestProblems).Error; err != nil {
-			log.Println("Error fetching contest problems:", err)
+			slog.Error("Error fetching contest problems", "error", err)
 			utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch contest problems", nil)
 			return
 		}
@@ -89,7 +89,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		var problemResults []models.ContestProblemResult
 		if userId != nil {
 			if err := h.db.Where("contest_id = ? AND user_id = ?", contestId, *userId).Find(&problemResults).Error; err != nil {
-				log.Println("Error fetching problem results:", err)
+				slog.Error("Error fetching problem results", "error", err)
 				utils.SendResponse(w, http.StatusInternalServerError, "Failed to fetch problem results", nil)
 				return
 			}
@@ -105,7 +105,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 			Select("problem_id, COUNT(*) as solved_count").
 			Where("contest_id = ? AND is_solved = ?", contestId, true).
 			Group("problem_id").Scan(&solverCounts); err != nil {
-			log.Println("Error counting solvers:", err)
+			slog.Error("Error counting solvers", "error", err)
 		}
 
 		solverMap := make(map[string]int)

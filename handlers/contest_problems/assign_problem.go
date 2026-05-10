@@ -2,7 +2,7 @@ package contest_problems
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/models"
@@ -25,7 +25,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	// Check if contest exists
 	var countContest int64
 	if err = h.db.Model(&models.Contest{}).Where("id = ?", contestProblem.ContestId).Count(&countContest).Error; err != nil {
-		log.Println("Failed to check contest existence:", err)
+		slog.Error("Failed to check contest existence", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
@@ -49,7 +49,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	`
 
 	if err = h.db.Raw(query, contestProblem.ProblemId).Scan(&problemDetails).Error; err != nil {
-		log.Println("Failed to get problem details:", err)
+		slog.Error("Failed to get problem details", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
@@ -64,7 +64,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		log.Println("Failed to begin transaction:", tx.Error)
+		slog.Error("Failed to begin transaction", "error", tx.Error)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
@@ -77,7 +77,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	// Ensure the problem is not already assigned
 	var existsCount int64
 	if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ? AND problem_id = ?", contestProblem.ContestId, contestProblem.ProblemId).Count(&existsCount).Error; err != nil {
-		log.Println("Failed to check existing assignment:", err)
+		slog.Error("Failed to check existing assignment", "error", err)
 		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
@@ -91,7 +91,7 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	// Count existing problems to determine next index
 	var count int64
 	if err = tx.Model(&models.ContestProblem{}).Where("contest_id = ?", contestProblem.ContestId).Count(&count).Error; err != nil {
-		log.Println("Failed to count contest problems:", err)
+		slog.Error("Failed to count contest problems", "error", err)
 		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
@@ -106,14 +106,14 @@ func (h *Handler) AssignContestProblems(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err = tx.Create(&newCP).Error; err != nil {
-		log.Println("Failed to insert contest problem:", err)
+		slog.Error("Failed to insert contest problem", "error", err)
 		tx.Rollback()
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}
 
 	if err = tx.Commit().Error; err != nil {
-		log.Println("Failed to commit contest problem assignment:", err)
+		slog.Error("Failed to commit contest problem assignment", "error", err)
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to assign contest problem", nil)
 		return
 	}

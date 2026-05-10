@@ -1,7 +1,7 @@
 package submissions
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -57,8 +57,7 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		Updates(updates)
 
 	if result.Error != nil {
-		log.Printf("DB Update Error (submission=%d): %v",
-			enginePayload.SubmissionId, result.Error)
+		slog.Error("DB Update Error", "submission_id", enginePayload.SubmissionId, "error", result.Error)
 
 		utils.SendResponse(w, http.StatusInternalServerError, "Failed to update submission", nil)
 		return
@@ -75,14 +74,14 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 	// // -----------------------------
 	// if enginePayload.Status == "ACCEPTED" {
 	// 	if err := h.updateStandingsForAccepted(enginePayload.SubmissionId); err != nil {
-	// 		log.Printf("Standings update (ACCEPTED) failed: %v", err)
+	// 		slog.Error("Standings update (ACCEPTED) failed", "error", err)
 	// 	}
 	// } else {
 	// 	if err := h.updateStandingsForNonAccepted(
 	// 		enginePayload.SubmissionId,
 	// 		enginePayload.Status,
 	// 	); err != nil {
-	// 		log.Printf("Standings update failed: %v", err)
+	// 		slog.Error("Standings update failed", "error", err)
 	// 	}
 	// }
 

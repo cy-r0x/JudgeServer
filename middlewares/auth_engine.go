@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -69,7 +69,7 @@ func (m *Middlewares) AuthEngine(next http.Handler) http.Handler {
 		err := decoder.Decode(&enginePayload)
 
 		if err != nil {
-			log.Println(err)
+			slog.Warn("engine payload decode failed", "error", err)
 			utils.SendResponse(w, http.StatusBadRequest, "Invalid JSON", nil)
 			return
 		}

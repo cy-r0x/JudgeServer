@@ -18,7 +18,7 @@ func (h *Handler) fetchSubmissions(params SubmissionListParams) ([]SubmissionRes
 		Name       string    `json:"name"`
 		Username   string    `json:"username"`
 		ProblemID  string    `json:"problemId"`
-		ProblemIdx string    `json:"problemIndex"`
+		ProblemIndex int    `json:"problemIndex"`
 		ContestID  *string   `json:"contestId"`
 		Language   string    `json:"language"`
 		Status     string    `json:"status"`
@@ -85,17 +85,18 @@ func (h *Handler) fetchSubmissions(params SubmissionListParams) ([]SubmissionRes
 	for _, row := range rows {
 		totalCount = row.TotalCount
 		submissions = append(submissions, SubmissionResponse{
-			Id:         row.ID,
-			UserId:     row.UserID,
-			Name:       row.Name,
-			Username:   row.Username,
-			ProblemId:  row.ProblemID,
-			ContestId:  row.ContestID,
-			Language:   row.Language,
-			Status:     row.Status,
-			ExecTime:   row.ExecTime,
-			ExecMemory: row.ExecMemory,
-			CreatedAt:  row.CreatedAt,
+			Id:           row.ID,
+			UserId:       row.UserID,
+			Name:         row.Name,
+			Username:     row.Username,
+			ProblemId:    row.ProblemID,
+			ProblemIndex: row.ProblemIndex,
+			ContestId:    row.ContestID,
+			Language:     row.Language,
+			Status:       row.Status,
+			ExecTime:     row.ExecTime,
+			ExecMemory:   row.ExecMemory,
+			CreatedAt:    row.CreatedAt,
 			// SourceCode intentionally omitted
 		})
 	}

@@ -53,5 +53,5 @@ func (h *Handler) GetContestProblems(w http.ResponseWriter, r *http.Request) {
 		contestProblems = []ContestProblem{}
 	}
 
-	utils.SendResponse(w, http.StatusOK, contestProblems, nil)
+	utils.SendResponse(w, http.StatusOK, "Problems fetched succesfully", contestProblems)
 }

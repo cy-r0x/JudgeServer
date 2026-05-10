@@ -104,7 +104,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		if err := h.db.Model(&models.ContestProblemResult{}).
 			Select("problem_id, COUNT(*) as solved_count").
 			Where("contest_id = ? AND is_solved = ?", contestId, true).
-			Group("problem_id").Scan(&solverCounts); err != nil {
+			Group("problem_id").Scan(&solverCounts).Error; err != nil {
 			slog.Error("Error counting solvers", "error", err)
 		}
 

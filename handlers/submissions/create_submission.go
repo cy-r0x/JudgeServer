@@ -188,5 +188,5 @@ func (h *Handler) CreateSubmission(w http.ResponseWriter, r *http.Request) {
 	// -----------------------------------
 	// DONE
 	// -----------------------------------
-	utils.SendResponse(w, http.StatusOK, "Submission Created Successfully", nil)
+	utils.SendResponse(w, http.StatusOK, "Submission Created Successfully", map[string]int64{"id": submissionID})
 }

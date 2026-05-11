@@ -98,6 +98,12 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build problem ID -> index map
+	problemIndexMap := make(map[string]int)
+	for i, cp := range contestProblems {
+		problemIndexMap[cp.ProblemID] = i + 1
+	}
+
 	// Build user standings from ContestProblemResult
 	userData := make(map[string]*userStandingData)
 	for _, pr := range problemResults {
@@ -133,9 +139,11 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 					if lastSolvedAt == nil || (pr.SolvedAt != nil && pr.SolvedAt.After(*lastSolvedAt)) {
 						lastSolvedAt = pr.SolvedAt
 					}
+					status.Attempts = pr.WrongAttempts + 1
+				} else {
+					status.Attempts = pr.WrongAttempts
 				}
 				status.Solved = pr.IsSolved
-				status.Attempts = pr.WrongAttempts
 				status.Penalty = pr.Penalty
 				status.FirstBlood = pr.IsFirstBlood
 				if pr.SolvedAt != nil {
@@ -172,19 +180,13 @@ func (h *Handler) GetStandings(w http.ResponseWriter, r *http.Request) {
 		problemSolveStatus[i+1] = ProblemSolveStatus{Solved: 0, Attempted: 0}
 	}
 	for _, pr := range problemResults {
-		cpIndex := 0
-		for i, cp := range contestProblems {
-			if cp.ProblemID == pr.ProblemId {
-				cpIndex = i + 1
-				break
-			}
-		}
-		if ps, exists := problemSolveStatus[cpIndex]; exists {
+		if idx, ok := problemIndexMap[pr.ProblemId]; ok {
+			ps := problemSolveStatus[idx]
 			if pr.IsSolved {
 				ps.Solved++
 			}
 			ps.Attempted++
-			problemSolveStatus[cpIndex] = ps
+			problemSolveStatus[idx] = ps
 		}
 	}
 

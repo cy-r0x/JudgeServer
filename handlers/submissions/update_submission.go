@@ -68,22 +68,21 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// @TODO: kaj baki ekhane ekhno!!!!!!!!!!!!!
-	// // -----------------------------
-	// // Standings update (sync call)
-	// // -----------------------------
-	// if enginePayload.Status == "ACCEPTED" {
-	// 	if err := h.updateStandingsForAccepted(enginePayload.SubmissionId); err != nil {
-	// 		slog.Error("Standings update (ACCEPTED) failed", "error", err)
-	// 	}
-	// } else {
-	// 	if err := h.updateStandingsForNonAccepted(
-	// 		enginePayload.SubmissionId,
-	// 		enginePayload.Status,
-	// 	); err != nil {
-	// 		slog.Error("Standings update failed", "error", err)
-	// 	}
-	// }
+	// -----------------------------
+	// Standings update (sync call)
+	// -----------------------------
+	if enginePayload.Status == "ACCEPTED" {
+		if err := h.updateStandingsForAccepted(enginePayload.SubmissionId); err != nil {
+			slog.Error("Standings update (ACCEPTED) failed", "error", err)
+		}
+	} else {
+		if err := h.updateStandingsForNonAccepted(
+			enginePayload.SubmissionId,
+			enginePayload.Status,
+		); err != nil {
+			slog.Error("Standings update failed", "error", err)
+		}
+	}
 
 	// -----------------------------
 	// Done

@@ -2,8 +2,8 @@ package submissions
 
 import (
 	"log/slog"
-	"time"
 
+	"github.com/judgenot0/judge-backend/models"
 	"gorm.io/gorm"
 )
 
@@ -11,29 +11,22 @@ const (
 	PenaltyPerWrongSubmission = 20 // minutes penalty for each wrong submission
 )
 
-type submissionInfo struct {
-	UserID      string    `gorm:"column:user_id"`
-	ContestID   *string   `gorm:"column:contest_id"`
-	ProblemID   string    `gorm:"column:problem_id"`
-	SubmittedAt time.Time `gorm:"column:submitted_at"`
-}
-
-func (h *Handler) updateStandingsForAccepted(submissionId int64) {
-	info, err := h.fetchSubmissionContext(submissionId)
-	if err != nil {
+func (h *Handler) updateStandingsForAccepted(submissionId int64) error {
+	var submission models.Submission
+	if err := h.db.Where("id = ?", submissionId).First(&submission).Error; err != nil {
 		slog.Error("standings context error", "error", err)
-		return
+		return err
 	}
-	if info == nil || info.ContestID == nil {
-		return
+	if submission.ContestID == nil {
+		return nil
 	}
 
-	contestID := *info.ContestID
+	contestID := *submission.ContestID
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
 		slog.Error("standings tx begin error", "error", tx.Error)
-		return
+		return tx.Error
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -42,162 +35,118 @@ func (h *Handler) updateStandingsForAccepted(submissionId int64) {
 	}()
 
 	// Check if already solved
-	var alreadySolved bool
-	err = tx.Raw(`SELECT EXISTS (SELECT 1 FROM contest_solves WHERE contest_id=? AND user_id=? AND problem_id=?)`, contestID, info.UserID, info.ProblemID).Scan(&alreadySolved).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings check exists error", "error", err)
-		return
-	}
-	if alreadySolved {
+	var existingResult models.ContestProblemResult
+	findErr := tx.Where("contest_id = ? AND user_id = ? AND problem_id = ?", contestID, submission.UserID, submission.ProblemID).First(&existingResult).Error
+	if findErr == nil && existingResult.IsSolved {
 		if err := tx.Commit().Error; err != nil {
 			slog.Error("standings commit error", "error", err)
 		}
-		return
+		return nil
 	}
-
-	// Get problem index
-	var problemIndex int
-	err = tx.Raw(`SELECT index FROM contest_problems WHERE contest_id=? AND problem_id=?`, contestID, info.ProblemID).Scan(&problemIndex).Error
-	if err != nil {
+	if findErr != nil && findErr != gorm.ErrRecordNotFound {
 		tx.Rollback()
-		slog.Error("standings get problem index error", "error", err)
-		return
+		slog.Error("standings check exists error", "error", findErr)
+		return findErr
 	}
 
-	// Check if this is the first AC for this problem in this contest (first blood)
-	var isFirstBlood bool
-	err = tx.Raw(`SELECT NOT EXISTS (
-		SELECT 1 FROM submissions 
-		WHERE contest_id=? AND problem_id=? 
-		AND verdict = 'ac'
-		AND submitted_at < ?
-	)`, contestID, info.ProblemID, info.SubmittedAt).Scan(&isFirstBlood).Error
-	if err != nil {
+	// Check first blood
+	var existingFirstBlood int64
+	if err := tx.Model(&models.ContestProblemResult{}).
+		Where("contest_id = ? AND problem_id = ? AND is_first_blood = ?", contestID, submission.ProblemID, true).
+		Count(&existingFirstBlood).Error; err != nil {
 		tx.Rollback()
 		slog.Error("standings check first blood error", "error", err)
-		return
+		return err
 	}
 
-	// Mark the submission as first blood if applicable
-	if isFirstBlood {
-		if err := tx.Exec(`UPDATE submissions SET first_blood = true WHERE id = ?`, submissionId).Error; err != nil {
+	isFirstBlood := false
+	if existingFirstBlood == 0 {
+		var earlierAC int64
+		if err := tx.Model(&models.Submission{}).
+			Where("contest_id = ? AND problem_id = ? AND status = ? AND created_at < ?",
+				contestID, submission.ProblemID, "ACCEPTED", submission.CreatedAt).
+			Count(&earlierAC).Error; err != nil {
 			tx.Rollback()
-			slog.Error("standings mark first blood error", "error", err)
-			return
+			slog.Error("standings check earlier ac error", "error", err)
+			return err
 		}
+		isFirstBlood = earlierAC == 0
 	}
 
-	penalty, err := h.calculatePenalty(tx, contestID, info)
+	// Calculate penalty
+	penalty, err := h.calculatePenalty(tx, contestID, &submission)
 	if err != nil {
 		tx.Rollback()
 		slog.Error("standings penalty error", "error", err)
-		return
+		return err
 	}
 
-	// Count total attempts for this problem by this user
-	var attemptCount int
-	err = tx.Raw(`SELECT COUNT(*) FROM submissions 
-		WHERE contest_id=? AND user_id=? AND problem_id=? AND submitted_at <= ?`,
-		contestID, info.UserID, info.ProblemID, info.SubmittedAt).Scan(&attemptCount).Error
-	if err != nil {
+	// Count all non-AC submissions before this one
+	var wrongAttempts int64
+	if err := tx.Model(&models.Submission{}).
+		Where("contest_id = ? AND user_id = ? AND problem_id = ? AND created_at < ? AND status != ?",
+			contestID, submission.UserID, submission.ProblemID, submission.CreatedAt, "ACCEPTED").
+		Count(&wrongAttempts).Error; err != nil {
 		tx.Rollback()
-		slog.Error("standings count attempts error", "error", err)
-		return
+		slog.Error("standings count wrong attempts error", "error", err)
+		return err
 	}
 
-	// Insert into contest_solves (keep for backward compatibility)
-	err = tx.Exec(`INSERT INTO contest_solves (contest_id, user_id, problem_id, solved_at, penalty, attempt_count, first_blood) VALUES (?, ?, ?, ?, ?, ?, ?)`, contestID, info.UserID, info.ProblemID, info.SubmittedAt, penalty, attemptCount, isFirstBlood).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings insert solve error", "error", err)
-		return
+	if findErr == gorm.ErrRecordNotFound {
+		result := models.ContestProblemResult{
+			ContestId:            contestID,
+			UserId:               submission.UserID,
+			ProblemId:            submission.ProblemID,
+			IsSolved:             true,
+			WrongAttempts:        int(wrongAttempts),
+			AcceptedSubmissionId: &submissionId,
+			SolvedAt:             &submission.CreatedAt,
+			Penalty:              penalty,
+			IsFirstBlood:         isFirstBlood,
+		}
+		if err := tx.Create(&result).Error; err != nil {
+			tx.Rollback()
+			slog.Error("standings create result error", "error", err)
+			return err
+		}
+	} else {
+		if err := tx.Model(&existingResult).Updates(map[string]interface{}{
+			"is_solved":              true,
+			"wrong_attempts":         int(wrongAttempts),
+			"accepted_submission_id": submissionId,
+			"solved_at":              submission.CreatedAt,
+			"penalty":                penalty,
+			"is_first_blood":         isFirstBlood,
+		}).Error; err != nil {
+			tx.Rollback()
+			slog.Error("standings update result error", "error", err)
+			return err
+		}
 	}
 
-	// Update contest_user_problems (new optimized table)
-	err = tx.Exec(`
-		INSERT INTO contest_user_problems (contest_id, user_id, problem_id, problem_index, is_solved, solved_at, penalty, attempt_count, first_blood)
-		VALUES (?, ?, ?, ?, TRUE, ?, ?, ?, ?)
-		ON CONFLICT (contest_id, user_id, problem_id)
-		DO UPDATE SET 
-			is_solved = TRUE,
-			solved_at = EXCLUDED.solved_at,
-			penalty = EXCLUDED.penalty,
-			attempt_count = EXCLUDED.attempt_count,
-			first_blood = EXCLUDED.first_blood
-	`, contestID, info.UserID, info.ProblemID, problemIndex, info.SubmittedAt, penalty, attemptCount, isFirstBlood).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings upsert user_problem error", "error", err)
-		return
-	}
-
-	// Update contest_standings with enhanced fields
-	err = tx.Exec(`
-		INSERT INTO contest_standings (contest_id, user_id, penalty, solved_count, last_solved_at)
-		VALUES (?, ?, ?, 1, ?)
-		ON CONFLICT (contest_id, user_id)
-		DO UPDATE SET 
-			penalty = contest_standings.penalty + EXCLUDED.penalty,
-			solved_count = contest_standings.solved_count + 1,
-			last_solved_at = GREATEST(contest_standings.last_solved_at, EXCLUDED.last_solved_at)
-	`, contestID, info.UserID, penalty, info.SubmittedAt).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings upsert error", "error", err)
-		return
-	}
-
-	// Update contest_problem_stats
-	err = tx.Exec(`
-		INSERT INTO contest_problem_stats (contest_id, problem_id, problem_index, solved_count, attempted_users)
-		VALUES (?, ?, ?, 1, 1)
-		ON CONFLICT (contest_id, problem_id)
-		DO UPDATE SET solved_count = contest_problem_stats.solved_count + 1
-	`, contestID, info.ProblemID, problemIndex).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings update problem stats error", "error", err)
-		return
-	}
-
-	if err = tx.Commit().Error; err != nil {
+	if err := tx.Commit().Error; err != nil {
 		slog.Error("standings commit error", "error", err)
 	}
+	return nil
 }
 
-func (h *Handler) fetchSubmissionContext(submissionID int64) (*submissionInfo, error) {
-	var info submissionInfo
-	err := h.db.Raw(`SELECT user_id, contest_id, problem_id, submitted_at FROM submissions WHERE id=?`, submissionID).Scan(&info).Error
-	if err != nil {
-		return nil, err
-	}
-
-	if info.ContestID == nil {
-		return &info, nil
-	}
-
-	return &info, nil
-}
-
-func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissionInfo) (int, error) {
-	var wrongCount int
-	err := tx.Raw(`
-		SELECT COUNT(*) 
-		FROM submissions 
-		WHERE contest_id=? AND user_id=? AND problem_id=? AND submitted_at < ? 
-		AND verdict IN ('wa','tle','re','mle')
-	`, contestID, info.UserID, info.ProblemID, info.SubmittedAt).Scan(&wrongCount).Error
+func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, submission *models.Submission) (int, error) {
+	var wrongCount int64
+	err := tx.Model(&models.Submission{}).
+		Where("contest_id = ? AND user_id = ? AND problem_id = ? AND created_at < ? AND status IN ?",
+			contestID, submission.UserID, submission.ProblemID, submission.CreatedAt,
+			[]string{"WRONG_ANSWER", "TIME_LIMIT_EXCEEDED", "RUNTIME_ERROR", "MEMORY_LIMIT_EXCEEDED"}).
+		Count(&wrongCount).Error
 	if err != nil {
 		return 0, err
 	}
 
-	var contestStart time.Time
-	if err := tx.Raw(`SELECT start_time FROM contests WHERE id=?`, contestID).Scan(&contestStart).Error; err != nil {
+	var contest models.Contest
+	if err := tx.Where("id = ?", contestID).First(&contest).Error; err != nil {
 		return 0, err
 	}
 
-	elapsed := info.SubmittedAt.Sub(contestStart)
+	elapsed := submission.CreatedAt.Sub(contest.StartTime)
 	if elapsed < 0 {
 		elapsed = 0
 	}
@@ -207,25 +156,25 @@ func (h *Handler) calculatePenalty(tx *gorm.DB, contestID string, info *submissi
 		elapsedMinutes = 0
 	}
 
-	return elapsedMinutes + wrongCount*PenaltyPerWrongSubmission, nil
+	return elapsedMinutes + int(wrongCount)*PenaltyPerWrongSubmission, nil
 }
 
-func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict string) {
-	info, err := h.fetchSubmissionContext(submissionId)
-	if err != nil {
+func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict string) error {
+	var submission models.Submission
+	if err := h.db.Where("id = ?", submissionId).First(&submission).Error; err != nil {
 		slog.Error("standings context error", "error", err)
-		return
+		return err
 	}
-	if info == nil || info.ContestID == nil {
-		return
+	if submission.ContestID == nil {
+		return nil
 	}
 
-	contestID := *info.ContestID
+	contestID := *submission.ContestID
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
 		slog.Error("standings tx begin error", "error", tx.Error)
-		return
+		return tx.Error
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -234,73 +183,45 @@ func (h *Handler) updateStandingsForNonAccepted(submissionId int64, verdict stri
 	}()
 
 	// Check if already solved
-	var alreadySolved bool
-	err = tx.Raw(`SELECT EXISTS (SELECT 1 FROM contest_solves WHERE contest_id=? AND user_id=? AND problem_id=?)`, contestID, info.UserID, info.ProblemID).Scan(&alreadySolved).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings check exists error", "error", err)
-		return
-	}
-	if alreadySolved {
+	var existingResult models.ContestProblemResult
+	findErr := tx.Where("contest_id = ? AND user_id = ? AND problem_id = ?", contestID, submission.UserID, submission.ProblemID).First(&existingResult).Error
+	if findErr == nil && existingResult.IsSolved {
 		if err := tx.Commit().Error; err != nil {
 			slog.Error("standings commit error", "error", err)
 		}
-		return
+		return nil
 	}
-
-	// Get problem index
-	var problemIndex int
-	err = tx.Raw(`SELECT index FROM contest_problems WHERE contest_id=? AND problem_id=?`, contestID, info.ProblemID).Scan(&problemIndex).Error
-	if err != nil {
+	if findErr != nil && findErr != gorm.ErrRecordNotFound {
 		tx.Rollback()
-		slog.Error("standings get problem index error", "error", err)
-		return
+		slog.Error("standings check exists error", "error", findErr)
+		return findErr
 	}
 
-	// Update contest_user_problems with attempt count
-	err = tx.Exec(`
-		INSERT INTO contest_user_problems (contest_id, user_id, problem_id, problem_index, is_solved, attempt_count)
-		VALUES (?, ?, ?, ?, FALSE, 1)
-		ON CONFLICT (contest_id, user_id, problem_id)
-		DO UPDATE SET attempt_count = contest_user_problems.attempt_count + 1
-	`, contestID, info.UserID, info.ProblemID, problemIndex).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings upsert user_problem error", "error", err)
-		return
+	if findErr == gorm.ErrRecordNotFound {
+		result := models.ContestProblemResult{
+			ContestId:     contestID,
+			UserId:        submission.UserID,
+			ProblemId:     submission.ProblemID,
+			IsSolved:      false,
+			WrongAttempts: 1,
+			Penalty:       0,
+			IsFirstBlood:  false,
+		}
+		if err := tx.Create(&result).Error; err != nil {
+			tx.Rollback()
+			slog.Error("standings create result error", "error", err)
+			return err
+		}
+	} else {
+		if err := tx.Model(&existingResult).Update("wrong_attempts", gorm.Expr("wrong_attempts + ?", 1)).Error; err != nil {
+			tx.Rollback()
+			slog.Error("standings update wrong attempts error", "error", err)
+			return err
+		}
 	}
 
-	// Update contest_standings wrong_attempts
-	err = tx.Exec(`
-		INSERT INTO contest_standings (contest_id, user_id, penalty, solved_count, wrong_attempts)
-		VALUES (?, ?, 0, 0, 1)
-		ON CONFLICT (contest_id, user_id)
-		DO UPDATE SET wrong_attempts = contest_standings.wrong_attempts + 1
-	`, contestID, info.UserID).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings update wrong_attempts error", "error", err)
-		return
-	}
-
-	// Update contest_problem_stats - increment attempted_users if this is first attempt
-	err = tx.Exec(`
-		INSERT INTO contest_problem_stats (contest_id, problem_id, problem_index, solved_count, attempted_users)
-		VALUES (?, ?, ?, 0, 1)
-		ON CONFLICT (contest_id, problem_id)
-		DO UPDATE SET attempted_users = (
-			SELECT COUNT(DISTINCT user_id)
-			FROM contest_user_problems
-			WHERE contest_id = ? AND problem_id = ?
-		)
-	`, contestID, info.ProblemID, problemIndex, contestID, info.ProblemID).Error
-	if err != nil {
-		tx.Rollback()
-		slog.Error("standings update problem stats error", "error", err)
-		return
-	}
-
-	if err = tx.Commit().Error; err != nil {
+	if err := tx.Commit().Error; err != nil {
 		slog.Error("standings commit error", "error", err)
 	}
+	return nil
 }

@@ -4,9 +4,9 @@ import "time"
 
 type ContestProblemResult struct {
 	Id                   string     `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
-	ContestId            string     `gorm:"type:uuid;not null;index:idx_contest_problem_results_contest" json:"contestId"`
-	UserId               string     `gorm:"type:uuid;not null;index:idx_contest_problem_results_user" json:"userId"`
-	ProblemId            string     `gorm:"type:uuid;not null;index:idx_contest_problem_results_problem" json:"problemId"`
+	ContestId            string     `gorm:"type:uuid;not null;index:idx_contest_problem_results_contest;uniqueIndex:uq_contest_problem_result,priority:1" json:"contestId"`
+	UserId               string     `gorm:"type:uuid;not null;index:idx_contest_problem_results_user;uniqueIndex:uq_contest_problem_result,priority:2" json:"userId"`
+	ProblemId            string     `gorm:"type:uuid;not null;index:idx_contest_problem_results_problem;uniqueIndex:uq_contest_problem_result,priority:3" json:"problemId"`
 	IsSolved             bool       `gorm:"not null" json:"isSolved"`
 	WrongAttempts        int        `gorm:"not null" json:"wrongAttempts"`
 	AcceptedSubmissionId *int64     `gorm:"index:idx_contest_problem_results_accepted_submission" json:"acceptedSubmissionId"`

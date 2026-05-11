@@ -10,9 +10,9 @@ import (
 )
 
 type ExportedUserStanding struct {
-	Name       string `json:"name"`
-	SolveCount int    `json:"solve_count"`
-	Solved     []int  `json:"solved"`
+	Name        string `json:"name"`
+	SolveCount  int    `json:"solve_count"`
+	Solved      []int  `json:"solved"`
 }
 
 func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
@@ -50,9 +50,15 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build problem ID -> index map
+	problemIndexMap := make(map[string]int)
+	for i, cp := range contestProblems {
+		problemIndexMap[cp.ProblemID] = i + 1
+	}
+
 	// Build user -> solved problems mapping
 	type userExportedData struct {
-		Name       string
+		Name        string
 		SolvedCount int
 		Solved      map[int]bool // index -> solved
 	}
@@ -61,23 +67,14 @@ func (h *Handler) ExportStandings(w http.ResponseWriter, r *http.Request) {
 	for _, pr := range problemResults {
 		if _, exists := userData[pr.UserId]; !exists {
 			userData[pr.UserId] = &userExportedData{
-				Name:  pr.User.Name,
+				Name:   pr.User.Name,
 				Solved: make(map[int]bool),
 			}
 		}
 		if pr.IsSolved {
 			userData[pr.UserId].SolvedCount++
-		}
-	}
-
-	// Map problem ID to index for each user
-	for _, pr := range problemResults {
-		if pr.IsSolved {
-			for i, cp := range contestProblems {
-				if cp.ProblemID == pr.ProblemId {
-					userData[pr.UserId].Solved[i+1] = true
-					break
-				}
+			if idx, ok := problemIndexMap[pr.ProblemId]; ok {
+				userData[pr.UserId].Solved[idx] = true
 			}
 		}
 	}

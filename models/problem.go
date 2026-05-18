@@ -13,8 +13,8 @@ type Problem struct {
 	OutputStatement    string    `gorm:"type:text;not null" json:"outputStatement"`
 	TimeLimit          float64   `gorm:"not null" json:"timeLimit"`
 	MemoryLimit        float64   `gorm:"not null" json:"memoryLimit"`
-	CheckerType        string    `gorm:"type:varchar(10);not null" json:"checkerType"`
-	CheckerStrictSpace bool      `gorm:"not null" json:"checkerStrictSpace"`
+	CheckerType        string    `gorm:"type:varchar(20);not null;default:'string'" json:"checkerType"`
+	CheckerStrictSpace bool      `gorm:"not null;default:false" json:"checkerStrictSpace"`
 	CheckerPrecision   *string   `gorm:"type:varchar(10)" json:"checkerPrecision"`
 	CreatedAt          time.Time `gorm:"type:timestamptz;default:now()" json:"createdAt"`
 	UpdatedAt          time.Time `gorm:"type:timestamptz;default:now()" json:"updatedAt"`

@@ -34,6 +34,19 @@ type Problem struct {
 	LastSubmission     *LastSubmissionData `json:"lastSubmission,omitempty" gorm:"-"`
 }
 
+type UpdateProblemPayload struct {
+	Id                 string  `json:"id"`
+	Title              string  `json:"title"`
+	Statement          string  `json:"statement"`
+	InputStatement     string  `json:"inputStatement"`
+	OutputStatement    string  `json:"outputStatement"`
+	TimeLimit          float64 `json:"timeLimit"`
+	MemoryLimit        float64 `json:"memoryLimit"`
+	CheckerType        string  `json:"checkerType"`
+	CheckerStrictSpace bool    `json:"checkerStrictSpace"`
+	CheckerPrecision   *string `json:"checkerPrecision"`
+}
+
 type LastSubmissionData struct {
 	SourceCode string `json:"sourceCode" gorm:"column:source_code"`
 	Language   string `json:"language" gorm:"column:language"`

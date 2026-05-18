@@ -17,7 +17,7 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var reqProblem Problem
+	var reqProblem UpdateProblemPayload
 	if err := json.NewDecoder(r.Body).Decode(&reqProblem); err != nil {
 		utils.SendResponse(w, http.StatusBadRequest, "Invalid request payload", nil)
 		return

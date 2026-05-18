@@ -24,7 +24,7 @@ type UserSubmission struct {
 
 type Problem struct {
 	Language           string     `json:"language" gorm:"-"`
-	SourceCode         string     `json:"source_code" gorm:"-"`
+	SourceCode         string     `json:"sourceCode" gorm:"-"`
 	TimeLimit          float32    `json:"timeLimit" gorm:"column:time_limit"`
 	MemoryLimit        float32    `json:"memoryLimit" gorm:"column:memory_limit"`
 	Testcases          []Testcase `json:"testcases" gorm:"-"`

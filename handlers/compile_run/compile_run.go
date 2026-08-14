@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/judgenot0/judge-backend/middlewares"
 	"github.com/judgenot0/judge-backend/models"
@@ -54,7 +55,7 @@ func (h *Handler) CompileRun(w http.ResponseWriter, r *http.Request) {
 	problem.Language = submission.Language
 	problem.Testcases = testcases
 
-	url := h.config.EngineUrl + "/run"
+	url := strings.TrimSuffix(h.config.EngineUrl, "/") + "/run"
 
 	runReq, err := json.Marshal(&problem)
 	if err != nil {

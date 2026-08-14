@@ -29,26 +29,26 @@ func DecodeToken(tokenStr string, secretKey string) (*Payload, error) {
 	return payload, nil
 }
 
+func AccessTokenFromRequest(r *http.Request) string {
+	header := r.Header.Get("Authorization")
+	if header != "" {
+		headerArr := strings.Split(header, " ")
+		if len(headerArr) == 2 {
+			return headerArr[1]
+		}
+	}
+
+	cookie, err := r.Cookie("access_token")
+	if err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+
+	return ""
+}
+
 func (m *Middlewares) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var accessToken string
-
-		// Try Authorization header first
-		header := r.Header.Get("Authorization")
-		if header != "" {
-			headerArr := strings.Split(header, " ")
-			if len(headerArr) == 2 {
-				accessToken = headerArr[1]
-			}
-		}
-
-		// Fallback to cookie
-		if accessToken == "" {
-			cookie, err := r.Cookie("access_token")
-			if err == nil && cookie.Value != "" {
-				accessToken = cookie.Value
-			}
-		}
+		accessToken := AccessTokenFromRequest(r)
 
 		if accessToken == "" {
 			utils.SendResponse(w, http.StatusUnauthorized, "Authorization required", nil)

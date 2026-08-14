@@ -27,6 +27,7 @@ func (h *Handler) UpdateSubmission(w http.ResponseWriter, r *http.Request) {
 		"RUNTIME_ERROR":         true,
 		"MEMORY_LIMIT_EXCEEDED": true,
 		"COMPILATION_ERROR":     true,
+		"INTERNAL_ERROR":        true,
 	}
 
 	if !validStatuses[enginePayload.Status] {

@@ -3,7 +3,6 @@ package contest
 import (
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/judgenot0/judge-backend/middlewares"
@@ -13,16 +12,11 @@ import (
 
 func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 	var userId *string
-	header := r.Header.Get("Authorization")
-
-	if header != "" {
-		headerArr := strings.Split(header, " ")
-		if len(headerArr) == 2 {
-			accessToken := headerArr[1]
-			payload, err := middlewares.DecodeToken(accessToken, h.config.SecretKey)
-			if err == nil {
-				userId = &payload.Sub
-			}
+	accessToken := middlewares.AccessTokenFromRequest(r)
+	if accessToken != "" {
+		payload, err := middlewares.DecodeToken(accessToken, h.config.SecretKey)
+		if err == nil {
+			userId = &payload.Sub
 		}
 	}
 
@@ -73,7 +67,7 @@ func (h *Handler) GetContest(w http.ResponseWriter, r *http.Request) {
 		Index        int    `json:"index"`
 		Solved       bool   `json:"solved"`
 		Attempted    bool   `json:"attempted"`
-		TotalSolvers int    `json:"total_solvers"`
+		TotalSolvers int    `json:"totalSolvers"`
 	}
 
 	problems := []Problem{}

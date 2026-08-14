@@ -13,7 +13,7 @@ func (m *Middlewares) AuthenticateSetter(next http.Handler) http.Handler {
 			utils.SendResponse(w, http.StatusUnauthorized, "User information not found", nil)
 			return
 		}
-		if payload.Role != "setter" {
+		if payload.Role != "setter" && payload.Role != "admin" {
 			utils.SendResponse(w, http.StatusUnauthorized, "Unauthorized", nil)
 			return
 		}

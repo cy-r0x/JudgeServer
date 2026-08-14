@@ -40,7 +40,7 @@ func (h *Handler) GetSubmission(w http.ResponseWriter, r *http.Request) {
 			s.exec_time,
 			s.exec_memory,
 			s.created_at,
-			u.name as user_name,
+			u.name as name,
 			u.username as username
 		`).
 		Joins("JOIN users u ON u.id = s.user_id").

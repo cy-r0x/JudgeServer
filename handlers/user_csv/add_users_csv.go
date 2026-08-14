@@ -31,6 +31,9 @@ func (h *Handler) AddUserCsv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contestID := r.FormValue("contest_id")
+	if contestID == "" {
+		contestID = r.FormValue("contestId")
+	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {

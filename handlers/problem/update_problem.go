@@ -31,7 +31,7 @@ func (h *Handler) UpdateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if author != payload.Sub {
+	if payload.Role != "admin" && author != payload.Sub {
 		utils.SendResponse(w, http.StatusForbidden, "You can only update problems you've created", nil)
 		return
 	}

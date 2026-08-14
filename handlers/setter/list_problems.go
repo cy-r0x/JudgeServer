@@ -17,12 +17,14 @@ func (h *Handler) ListSetterProblems(w http.ResponseWriter, r *http.Request) {
 	}
 	setterId := payload.Sub
 
+	query := h.db.Model(&models.Problem{}).
+		Select("id", "title", "created_at")
+	if payload.Role != "admin" {
+		query = query.Where("author = ?", setterId)
+	}
+
 	var problems []Problem
-	err := h.db.Model(&models.Problem{}).
-		Select("id", "title", "created_at").
-		Where("author = ?", setterId).
-		Order("created_at DESC").
-		Scan(&problems).Error
+	err := query.Order("created_at DESC").Scan(&problems).Error
 
 	if err != nil {
 		slog.Error("Error fetching setter problems", "error", err)

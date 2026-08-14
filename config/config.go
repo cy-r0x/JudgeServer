@@ -8,14 +8,15 @@ import (
 )
 
 type Config struct {
-	HttpPort    string
-	SecretKey   string
-	DBURL       string
-	EngineKey   string
-	EngineUrl   string
-	WorkerCount int
-	QueueName   string
-	RabbitMQURL string
+	HttpPort     string
+	SecretKey    string
+	DBURL        string
+	EngineKey    string
+	EngineUrl    string
+	WorkerCount  int
+	QueueName    string
+	RabbitMQURL  string
+	CookieSecure bool
 }
 
 var configuration *Config
@@ -73,6 +74,8 @@ func loadConfig() (*Config, error) {
 		config.RabbitMQURL = "amqp://guest:guest@localhost:5672/"
 		slog.Info("RABBITMQ_URL not set, using default", "url", "amqp://guest:guest@localhost:5672/")
 	}
+
+	config.CookieSecure = os.Getenv("COOKIE_SECURE") == "true"
 
 	return &config, nil
 }

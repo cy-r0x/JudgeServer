@@ -78,7 +78,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    accessToken,
 		Expires:  time.Now().Add(3 * time.Hour),
 		HttpOnly: true,
-		Secure:   true, // Set to true if running over HTTPS
+		Secure:   h.config.CookieSecure,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	}

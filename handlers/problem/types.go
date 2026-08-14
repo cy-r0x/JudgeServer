@@ -32,6 +32,7 @@ type Problem struct {
 	CreatedAt          time.Time           `json:"createdAt" gorm:"column:created_at"`
 	UpdatedAt          time.Time           `json:"updatedAt" gorm:"column:updated_at"`
 	LastSubmission     *LastSubmissionData `json:"lastSubmission,omitempty" gorm:"-"`
+	TestCases          []Testcase          `json:"testCases" gorm:"-"`
 }
 
 type LastSubmissionData struct {
